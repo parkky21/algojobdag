@@ -79,6 +79,43 @@
         --transition-slow: 0.5s cubic-bezier(0.16, 1, 0.3, 1);
       }
 
+      body.light-theme {
+        --bg-space: #f8fafc;
+        --bg-space-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        --bg-panel: rgba(255, 255, 255, 0.72);
+        --bg-panel-solid: #ffffff;
+        --bg-panel-hover: rgba(241, 245, 249, 0.85);
+        --bg-input: rgba(255, 255, 255, 0.9);
+        
+        --border-thin: rgba(15, 23, 42, 0.08);
+        --border-thin-hover: rgba(15, 23, 42, 0.15);
+        --border-active: rgba(59, 130, 246, 0.5);
+        
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
+        --text-muted: #94a3b8;
+        
+        /* Premium Light-mode HSL offsets for node legibility and colors */
+        --accent-blue-hsl: 217, 91%, 48%;
+        --accent-purple-hsl: 270, 91%, 52%;
+        --accent-amber-hsl: 38, 92%, 42%;
+        --accent-emerald-hsl: 142, 70%, 38%;
+        --accent-rose-hsl: 343, 90%, 48%;
+        
+        --glow-blue: 0 0 20px rgba(59, 130, 246, 0.15);
+        --glow-purple: 0 0 20px rgba(168, 85, 247, 0.15);
+        --glow-emerald: 0 0 20px rgba(16, 185, 129, 0.15);
+        --shadow-heavy: 0 16px 40px -10px rgba(15, 23, 42, 0.12);
+      }
+
+      body.light-theme ::-webkit-scrollbar-thumb {
+        background: rgba(15, 23, 42, 0.12);
+      }
+
+      body.light-theme ::-webkit-scrollbar-thumb:hover {
+        background: rgba(15, 23, 42, 0.25);
+      }
+
       body {
         background-color: var(--bg-space);
         background-image: var(--bg-space-gradient);
@@ -267,7 +304,7 @@
     .search-input:focus {
       outline: none;
       border-color: var(--accent-blue);
-      background: rgba(13, 17, 30, 0.95);
+      background: var(--bg-panel-solid);
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
 
@@ -282,7 +319,7 @@
       left: 0;
       width: 100%;
       background: var(--bg-panel-solid);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--border-thin);
       border-radius: 10px;
       box-shadow: var(--shadow-heavy);
       max-height: 280px;
@@ -1245,6 +1282,11 @@
     <!-- Floating Dashboard Menu button -->
     <button id="floating-toggle-left" class="hud-panel btn-icon" data-tooltip="Open Control Center" onclick="toggleLeftSidebar()" style="position: absolute; top: 16px; left: 16px; width: 44px; height: 44px; border-radius: 50%; z-index: 100; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: var(--bg-panel); backdrop-filter: var(--panel-blur); border: 1px solid var(--border-thin); box-shadow: var(--shadow-heavy); transition: opacity var(--transition-normal), transform var(--transition-normal);">
       <i data-lucide="sliders"></i>
+    </button>
+
+    <!-- Floating Theme Toggle button -->
+    <button id="floating-toggle-theme" class="hud-panel btn-icon" data-tooltip="Toggle Dark/Light Theme" onclick="toggleTheme()" style="position: absolute; top: 16px; left: 70px; width: 44px; height: 44px; border-radius: 50%; z-index: 100; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: var(--bg-panel); backdrop-filter: var(--panel-blur); border: 1px solid var(--border-thin); box-shadow: var(--shadow-heavy); transition: opacity var(--transition-normal), transform var(--transition-normal);">
+      <i id="theme-toggle-icon" data-lucide="sun"></i>
     </button>
 
     <!-- Left Analytics HUD Sidebar (Control Center) -->
@@ -2274,6 +2316,7 @@
       // Determine highlighted paths
       const highlights = getHighlightedPathElements(selectedNodeId);
       const isAnyNodeSelected = selectedNodeId !== null;
+      const isLightTheme = document.body.classList.contains("light-theme");
 
       // Add Leaves nodes (Small Circles)
       Object.keys(leaves).forEach(k => {
@@ -2291,7 +2334,7 @@
           size: 14,
           color: getNodeColor(k, isHighlighted, isDimmed),
           font: {
-            color: isDimmed ? "rgba(255,255,255,0.15)" : "#ffffff"
+            color: isDimmed ? (isLightTheme ? "rgba(15,23,42,0.15)" : "rgba(255,255,255,0.15)") : (isLightTheme ? "#0f172a" : "#ffffff")
           },
           borderWidth: isHighlighted ? 3 : 1.5,
           shadow: isHighlighted ? { enabled: true, color: glowColor, size: 15 } : { enabled: true }
@@ -2327,7 +2370,7 @@
           size: isRoot ? 35 : 22,
           color: getNodeColor(k, isHighlighted, isDimmed),
           font: {
-            color: isDimmed ? "rgba(255,255,255,0.15)" : "#ffffff"
+            color: isDimmed ? (isLightTheme ? "rgba(15,23,42,0.15)" : "rgba(255,255,255,0.15)") : (isLightTheme ? "#0f172a" : "#ffffff")
           },
           borderWidth: isHighlighted ? 3 : 2,
           shadow: isHighlighted ? { 
@@ -2350,13 +2393,13 @@
             label: isEdgeDimmed ? "" : w.toString(),
             arrows: "to",
             color: {
-              color: isEdgeHighlighted ? "rgba(59, 130, 246, 0.9)" : (isEdgeDimmed ? "rgba(255,255,255,0.015)" : "rgba(255, 255, 255, 0.1)"),
+              color: isEdgeHighlighted ? "rgba(59, 130, 246, 0.9)" : (isEdgeDimmed ? (isLightTheme ? "rgba(15, 23, 42, 0.01)" : "rgba(255,255,255,0.015)") : (isLightTheme ? "rgba(15, 23, 42, 0.15)" : "rgba(255, 255, 255, 0.1)")),
               highlight: "rgba(59, 130, 246, 0.9)",
               hover: "rgba(59, 130, 246, 0.6)"
             },
             width: isEdgeHighlighted ? 3 : 1.5,
             font: {
-              color: isEdgeDimmed ? "transparent" : "rgba(255,255,255,0.4)",
+              color: isEdgeDimmed ? "transparent" : (isLightTheme ? "rgba(15,23,42,0.5)" : "rgba(255,255,255,0.4)"),
               size: 10,
               strokeWidth: 0,
               face: "JetBrains Mono"
@@ -2976,9 +3019,58 @@
     });
 
     /* ----------------------------------------------------
+       THEME TOGGLE ENGINE
+       ---------------------------------------------------- */
+    function toggleTheme() {
+      const body = document.body;
+      const isLight = body.classList.contains("light-theme");
+      
+      if (isLight) {
+        body.classList.remove("light-theme");
+        localStorage.setItem("ai_engineer_dag_v7_theme", "dark");
+        showToast("Switched to Dark Mode");
+      } else {
+        body.classList.add("light-theme");
+        localStorage.setItem("ai_engineer_dag_v7_theme", "light");
+        showToast("Switched to Light Mode");
+      }
+      
+      updateThemeIcon();
+      
+      // Update UI and Network Colors
+      recompute();
+      renderNetwork();
+      updateUI();
+      
+      if (selectedNodeId) {
+        selectNodeById(selectedNodeId);
+      }
+    }
+
+    function updateThemeIcon() {
+      const icon = document.getElementById("theme-toggle-icon");
+      if (!icon) return;
+      
+      const isLight = document.body.classList.contains("light-theme");
+      if (isLight) {
+        icon.setAttribute("data-lucide", "moon");
+      } else {
+        icon.setAttribute("data-lucide", "sun");
+      }
+      lucide.createIcons();
+    }
+
+    /* ----------------------------------------------------
        SYSTEM INITIALIZATION RUN
        ---------------------------------------------------- */
     
+    // Check saved theme preference
+    const savedTheme = localStorage.getItem("ai_engineer_dag_v7_theme");
+    if (savedTheme === "light") {
+      document.body.classList.add("light-theme");
+    }
+    updateThemeIcon();
+
     // Load local storage if available
     const hasSavedState = loadState();
     
