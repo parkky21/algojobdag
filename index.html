@@ -1,0 +1,2720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Engineer Skill DAG V7 | Elite Portfolio Engine</title>
+  
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Vis Network library -->
+  <script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* ----------------------------------------------------
+       DESIGN SYSTEM & CUSTOM VARIABLES (TIER 1 & 2)
+       ---------------------------------------------------- */
+    @layer reset, base, theme, components, utilities;
+
+    @layer reset {
+      *, *::before, *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+    }
+
+    @layer base {
+      :root {
+        /* Colors */
+        --bg-space: #070913;
+        --bg-space-gradient: linear-gradient(135deg, #070913 0%, #030408 100%);
+        --bg-panel: rgba(13, 17, 30, 0.72);
+        --bg-panel-solid: #0d111e;
+        --bg-panel-hover: rgba(22, 29, 50, 0.85);
+        --bg-input: rgba(7, 9, 19, 0.6);
+        
+        --border-thin: rgba(255, 255, 255, 0.07);
+        --border-thin-hover: rgba(255, 255, 255, 0.15);
+        --border-active: rgba(59, 130, 246, 0.5);
+        
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --text-muted: #475569;
+        
+        /* Premium Accent Palettes (HSL for alpha control) */
+        --accent-blue-hsl: 217, 91%, 60%;
+        --accent-purple-hsl: 270, 91%, 65%;
+        --accent-amber-hsl: 38, 92%, 50%;
+        --accent-emerald-hsl: 142, 70%, 45%;
+        --accent-rose-hsl: 343, 90%, 55%;
+        
+        --accent-blue: hsl(var(--accent-blue-hsl));
+        --accent-purple: hsl(var(--accent-purple-hsl));
+        --accent-amber: hsl(var(--accent-amber-hsl));
+        --accent-emerald: hsl(var(--accent-emerald-hsl));
+        --accent-rose: hsl(var(--accent-rose-hsl));
+        
+        /* Fonts */
+        --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        --font-mono: 'JetBrains Mono', monospace;
+        
+        /* Shadows & Blur */
+        --panel-blur: blur(20px);
+        --glow-blue: 0 0 20px rgba(59, 130, 246, 0.25);
+        --glow-purple: 0 0 20px rgba(168, 85, 247, 0.25);
+        --glow-emerald: 0 0 20px rgba(16, 185, 129, 0.25);
+        --shadow-heavy: 0 16px 40px -10px rgba(0, 0, 0, 0.7);
+        
+        /* Transitions */
+        --transition-fast: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        --transition-normal: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        --transition-slow: 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      body {
+        background-color: var(--bg-space);
+        background-image: var(--bg-space-gradient);
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        min-height: 100vh;
+        overflow: hidden;
+        position: relative;
+        -webkit-font-smoothing: antialiased;
+      }
+      
+      /* Global Custom Scrollbars */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+      }
+
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        transition: background var(--transition-fast);
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.25);
+      }
+    }
+
+    /* ----------------------------------------------------
+       LAYOUT & LAYERING
+       ---------------------------------------------------- */
+    #network-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      outline: none;
+    }
+
+    /* Floating HUD Layer */
+    .hud-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: block;
+      padding: 16px;
+    }
+
+    /* Enable interaction for HUD containers */
+    .hud-panel {
+      pointer-events: auto;
+      background: var(--bg-panel);
+      backdrop-filter: var(--panel-blur);
+      border: 1px solid var(--border-thin);
+      border-radius: 16px;
+      box-shadow: var(--shadow-heavy);
+      transition: all var(--transition-normal);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .hud-panel:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    /* ----------------------------------------------------
+       COMPONENTS - TOP BAR
+       ---------------------------------------------------- */
+    .top-bar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 12;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo-container {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--glow-blue);
+    }
+
+    .brand-logo-container i {
+      color: white;
+      width: 18px;
+      height: 18px;
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      background: linear-gradient(120deg, var(--text-primary) 40%, rgba(255,255,255,0.7) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-status-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--accent-emerald);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-emerald);
+      animation: pulse-glow 2s infinite ease-in-out;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-grow: 1;
+      max-width: 650px;
+      margin: 0 40px;
+    }
+
+    /* Search Component */
+    .search-box {
+      position: relative;
+      flex-grow: 1;
+    }
+
+    .search-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input-wrapper i {
+      position: absolute;
+      left: 14px;
+      color: var(--text-secondary);
+      width: 16px;
+      height: 16px;
+      pointer-events: none;
+      transition: color var(--transition-fast);
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-thin);
+      border-radius: 10px;
+      padding: 10px 16px 10px 42px;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 0.88rem;
+      transition: all var(--transition-fast);
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+      background: rgba(13, 17, 30, 0.95);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    .search-input:focus + i {
+      color: var(--accent-blue);
+    }
+
+    /* Search Suggestions */
+    .search-suggestions {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 100%;
+      background: var(--bg-panel-solid);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      box-shadow: var(--shadow-heavy);
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      transition: all var(--transition-normal);
+    }
+
+    .search-suggestions.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .suggestion-item {
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-size: 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      transition: background var(--transition-fast);
+    }
+
+    .suggestion-item:last-child {
+      border-bottom: none;
+    }
+
+    .suggestion-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .suggestion-label {
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .suggestion-type {
+      font-size: 0.72rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .type-leaf {
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .type-category {
+      background: rgba(168, 85, 247, 0.15);
+      color: var(--accent-purple);
+      border: 1px solid rgba(168, 85, 247, 0.2);
+    }
+
+    /* Preset Select styling */
+    .preset-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preset-select {
+      background: var(--bg-input);
+      border: 1px solid var(--border-thin);
+      border-radius: 10px;
+      padding: 9px 12px;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      cursor: pointer;
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+
+    .preset-select:focus {
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+    }
+
+    /* System Utility Buttons */
+    .system-buttons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-icon {
+      background: var(--bg-input);
+      border: 1px solid var(--border-thin);
+      color: var(--text-secondary);
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      position: relative;
+    }
+
+    .btn-icon:hover {
+      border-color: var(--border-thin-hover);
+      color: var(--text-primary);
+      background: var(--bg-panel-hover);
+    }
+
+    .btn-icon i {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Tooltips for icon buttons */
+    .btn-icon::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(-4px);
+      background: var(--bg-panel-solid);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      font-size: 0.72rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      box-shadow: var(--shadow-heavy);
+      transition: all var(--transition-fast);
+    }
+
+    .btn-icon:hover::after {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ----------------------------------------------------
+       COMPONENTS - LEFT BAR (ANALYTICS & SUMMARY)
+       ---------------------------------------------------- */
+    .left-bar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      bottom: 16px;
+      width: 380px;
+      padding: 16px;
+      gap: 16px;
+      transform: translateX(calc(-100% - 32px));
+      transition: transform var(--transition-normal);
+      visibility: hidden;
+      z-index: 15;
+    }
+
+    .left-bar.active {
+      transform: translateX(0);
+      visibility: visible;
+    }
+
+    /* Crown Jewel Widget */
+    .crown-jewel-card {
+      background: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.08) 0%, transparent 75%);
+      border: 1px solid rgba(245, 158, 11, 0.15);
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 8px 32px -8px rgba(245, 158, 11, 0.04);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .crown-jewel-card::before {
+      content: "";
+      position: absolute;
+      top: -1px;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.5), transparent);
+    }
+
+    .crown-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .crown-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: 0.2px;
+    }
+
+    .crown-subtitle {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+
+    .crown-metrics {
+      display: flex;
+      gap: 10px;
+      margin-top: 6px;
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+    }
+
+    .crown-metrics span {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    /* Circular SVG Progress Ring */
+    .radial-meter {
+      position: relative;
+      width: 78px;
+      height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .radial-svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+
+    .radial-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.04);
+      stroke-width: 6px;
+    }
+
+    .radial-fill {
+      fill: none;
+      stroke: url(#amber-gradient);
+      stroke-width: 6.5px;
+      stroke-linecap: round;
+      stroke-dasharray: 220; /* 2 * PI * r = 2 * 3.14 * 35 = ~220 */
+      stroke-dashoffset: 220;
+      transition: stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .radial-text {
+      position: absolute;
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--accent-amber);
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    }
+
+    /* Summary Stats Cards Grid */
+    .mini-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-thin);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-header {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 500;
+    }
+
+    .stat-header i {
+      width: 12px;
+      height: 12px;
+    }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stat-footer {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    /* Category List Section */
+    .category-section {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      min-height: 0; /* Important for flex-child scroll */
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .category-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      flex-grow: 1;
+      padding-right: 4px;
+    }
+
+    .category-card {
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--border-thin);
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+
+    .category-card:hover {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(168, 85, 247, 0.3);
+      box-shadow: 0 4px 15px -4px rgba(168, 85, 247, 0.15);
+      transform: translateX(2px);
+    }
+
+    .category-card.active-highlight {
+      border-color: var(--accent-purple);
+      background: rgba(168, 85, 247, 0.05);
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.1);
+    }
+
+    .category-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .category-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: var(--font-display);
+    }
+
+    .category-badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent-purple);
+    }
+
+    /* Elegant glowing linear meter */
+    .linear-meter {
+      height: 5px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .linear-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
+      border-radius: 4px;
+      transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+    }
+
+    /* ----------------------------------------------------
+       COMPONENTS - RIGHT BAR (NODE INSPECTOR)
+       ---------------------------------------------------- */
+    .right-bar {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      bottom: 16px;
+      width: 400px;
+      padding: 16px;
+      gap: 16px;
+      transform: translateX(calc(100% + 32px));
+      transition: transform var(--transition-normal);
+      visibility: hidden;
+      z-index: 15;
+    }
+
+    .right-bar.active {
+      transform: translateX(0);
+      visibility: visible;
+    }
+
+    .inspector-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border-thin);
+      padding-bottom: 12px;
+      margin-bottom: 8px;
+    }
+
+    .inspector-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 85%;
+    }
+
+    .inspector-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .inspector-badge {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      align-self: flex-start;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .badge-root {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--accent-amber);
+      border-color: rgba(245, 158, 11, 0.2);
+    }
+
+    .badge-parent {
+      background: rgba(168, 85, 247, 0.12);
+      color: var(--accent-purple);
+      border-color: rgba(168, 85, 247, 0.2);
+    }
+
+    .badge-leaf {
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--accent-blue);
+      border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .btn-close-inspector {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast);
+    }
+
+    .btn-close-inspector:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+
+    .btn-close-inspector i {
+      width: 16px;
+      height: 16px;
+    }
+
+    .inspector-content {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+      flex-grow: 1;
+      padding-right: 4px;
+    }
+
+    .node-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Math Metrics Display Cards */
+    .metrics-card {
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--border-thin);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .metric-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .metric-label-group {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .metric-label i {
+      width: 12px;
+      height: 12px;
+      color: var(--text-muted);
+      cursor: help;
+    }
+
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .meter-progress {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .meter-progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .fill-neural {
+      background: linear-gradient(90deg, var(--accent-purple), var(--accent-rose));
+      box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+    }
+
+    .fill-belief {
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+    }
+
+    .fill-confidence {
+      background: linear-gradient(90deg, var(--accent-amber), #eab308);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+    }
+
+    /* Premium Custom Sliders (Leaf Controls) */
+    .slider-card {
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--border-thin);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .control-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .control-value-display {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent-blue);
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(59, 130, 246, 0.15);
+    }
+
+    .control-value-display.conf-val {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--accent-amber);
+      border-color: rgba(245, 158, 11, 0.15);
+    }
+
+    /* Slider track custom styling */
+    .custom-range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      outline: none;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+
+    .custom-range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+      border: 2px solid white;
+      transition: transform var(--transition-fast), background var(--transition-fast);
+    }
+
+    .custom-range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    .custom-range-slider.conf-slider::-webkit-slider-thumb {
+      background: var(--accent-amber);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+    }
+
+    .quick-preset-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .pill-btn {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-thin);
+      color: var(--text-secondary);
+      font-size: 0.68rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .pill-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+      border-color: var(--border-thin-hover);
+    }
+
+    /* Explorer lists (inputs and outputs) */
+    .explore-card {
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--border-thin);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .explore-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      padding-bottom: 6px;
+      margin-bottom: 4px;
+    }
+
+    .explore-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .explore-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-size: 0.78rem;
+    }
+
+    .explore-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: var(--border-thin-hover);
+      transform: translateX(2px);
+    }
+
+    .explore-name {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .explore-score {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+
+    /* ----------------------------------------------------
+       COMPONENTS - BOTTOM BAR (CONTROLS & PHYSICS)
+       ---------------------------------------------------- */
+    .bottom-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 12;
+    }
+
+    .control-group-bottom {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .bottom-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Segmented Controls (Switch Buttons) */
+    .segmented-control {
+      background: var(--bg-input);
+      border: 1px solid var(--border-thin);
+      padding: 3px;
+      border-radius: 10px;
+      display: flex;
+      gap: 2px;
+    }
+
+    .segmented-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .segmented-btn i {
+      width: 14px;
+      height: 14px;
+    }
+
+    .segmented-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .segmented-btn.active {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-regular {
+      background: var(--bg-input);
+      border: 1px solid var(--border-thin);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+
+    .btn-regular:hover {
+      border-color: var(--border-thin-hover);
+      background: var(--bg-panel-hover);
+    }
+
+    .btn-regular i {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Floating Physics Panel */
+    .physics-settings-panel {
+      position: absolute;
+      bottom: 80px;
+      left: 20px;
+      width: 320px;
+      background: var(--bg-panel-solid);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: var(--shadow-heavy);
+      z-index: 99;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(8px);
+      transition: all var(--transition-normal);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .physics-settings-panel.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .physics-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 8px;
+    }
+
+    .physics-panel-title {
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* ----------------------------------------------------
+       ANIMATIONS
+       ---------------------------------------------------- */
+    @keyframes pulse-glow {
+      0%, 100% {
+        opacity: 0.6;
+        box-shadow: 0 0 6px var(--accent-emerald);
+      }
+      50% {
+        opacity: 1;
+        box-shadow: 0 0 14px var(--accent-emerald);
+      }
+    }
+
+    /* Custom Alert Overlay */
+    .custom-toast {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      background: var(--bg-panel-solid);
+      border: 1px solid var(--accent-blue);
+      border-radius: 10px;
+      padding: 10px 16px;
+      box-shadow: var(--shadow-heavy);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 9999;
+      font-size: 0.82rem;
+      font-weight: 500;
+      transform: translateY(20px);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .custom-toast.active {
+      transform: translateY(0);
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .custom-toast i {
+      width: 16px;
+      height: 16px;
+      color: var(--accent-blue);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background Vis Network canvas -->
+  <div id="network-canvas"></div>
+
+  <!-- HUD Overlays -->
+  <!-- HUD Overlays -->
+  <div class="hud-layer">
+    
+    <!-- Floating Dashboard Menu button -->
+    <button id="floating-toggle-left" class="hud-panel btn-icon" data-tooltip="Open Control Center" onclick="toggleLeftSidebar()" style="position: absolute; top: 16px; left: 16px; width: 44px; height: 44px; border-radius: 50%; z-index: 100; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: var(--bg-panel); backdrop-filter: var(--panel-blur); border: 1px solid var(--border-thin); box-shadow: var(--shadow-heavy); transition: opacity var(--transition-normal), transform var(--transition-normal);">
+      <i data-lucide="sliders"></i>
+    </button>
+
+    <!-- Left Analytics HUD Sidebar (Control Center) -->
+    <aside id="left-sidebar-panel" class="hud-panel left-bar">
+      <!-- Control Panel Header with close button -->
+      <div class="inspector-header" style="border-bottom: 1px solid var(--border-thin); padding-bottom: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div class="brand" style="display: flex; align-items: center; gap: 8px;">
+          <div class="brand-logo-container" style="width:28px; height:28px; border-radius:6px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); display: flex; align-items: center; justify-content: center; box-shadow: var(--glow-blue);">
+            <i data-lucide="sliders" style="width:14px; height:14px; color: white;"></i>
+          </div>
+          <div class="brand-title" style="font-family: var(--font-display); font-size:1.05rem; font-weight:700; color: var(--text-primary);">Control Center</div>
+        </div>
+        <button class="btn-close-inspector" onclick="toggleLeftSidebar()" style="width:24px; height:24px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: var(--text-muted); cursor: pointer; border-radius: 50%; transition: all var(--transition-fast);">
+          <i data-lucide="x" style="width:14px; height:14px;"></i>
+        </button>
+      </div>
+
+      <!-- Left Sidebar Scrollable Content -->
+      <div class="inspector-content" style="gap: 14px;">
+        
+        <!-- Search & Preset Selection section -->
+        <div class="slider-card" style="padding: 12px; gap: 10px;">
+          <div class="control-group" style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="control-label" style="font-size:0.75rem;">Search Skills</span>
+            <search class="search-box" style="margin:0;">
+              <div class="search-input-wrapper">
+                <input id="search-input" class="search-input" type="search" placeholder="Search skill (e.g. RAG, Python)..." autocomplete="off" style="padding: 8px 12px 8px 36px; font-size:0.8rem;">
+                <i data-lucide="search" style="left:12px; width:14px; height:14px;"></i>
+              </div>
+              <div id="search-suggestions" class="search-suggestions" style="max-height:200px;"></div>
+            </search>
+          </div>
+
+          <div class="control-group" style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="control-label" style="font-size:0.75rem;">Talent Preset Profile</span>
+            <select id="preset-select" class="preset-select" onchange="loadPreset()" style="padding: 8px 10px; font-size:0.8rem; width:100%; border-radius: 10px;">
+              <option value="default">Default Balanced Profile</option>
+              <option value="beginner">Beginner / Graduate</option>
+              <option value="llm_expert">LLM Engineering Specialist</option>
+              <option value="mlops_expert">MLOps Infrastructure Engineer</option>
+              <option value="data_expert">Data Architecture Specialist</option>
+              <option value="master">Elite Multi-Domain Master</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Crown Jewel Card -->
+        <section class="crown-jewel-card" onclick="selectNodeByName('AI Engineer')" style="padding:14px; cursor:pointer;">
+          <div class="crown-info">
+            <span class="crown-subtitle" style="font-size:0.65rem;">Central Hub Rating</span>
+            <h2 class="crown-title" style="font-size:1.05rem;">AI Engineer</h2>
+            <div class="crown-metrics" style="font-size:0.6rem; margin-top:4px;">
+              <span id="crown-n">N: --</span>
+              <span id="crown-b">B: --</span>
+              <span id="crown-c">C: --</span>
+            </div>
+          </div>
+          <div class="radial-meter" style="width:68px; height:68px;">
+            <svg class="radial-svg" viewBox="0 0 80 80">
+              <defs>
+                <linearGradient id="amber-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#f59e0b" />
+                  <stop offset="100%" stop-color="#d97706" />
+                </linearGradient>
+              </defs>
+              <circle class="radial-bg" cx="40" cy="40" r="35" style="stroke-width:5px;"></circle>
+              <circle id="crown-radial-fill" class="radial-fill" cx="40" cy="40" r="35" style="stroke-width:5.5px;"></circle>
+            </svg>
+            <div id="crown-radial-text" class="radial-text" style="font-size:1.05rem;">0%</div>
+          </div>
+        </section>
+
+        <!-- Stats Grid -->
+        <section class="mini-stats-grid" style="gap: 8px;">
+          <div class="stat-card" style="padding:10px;">
+            <div class="stat-header" style="font-size:0.68rem;">
+              <i data-lucide="trending-up" style="color:var(--accent-emerald); width:10px; height:10px;"></i>
+              Highest Skill
+            </div>
+            <div id="stat-high-val" class="stat-value" style="font-size:1.05rem;">--</div>
+            <div id="stat-high-label" class="stat-footer" style="font-size:0.6rem;">--</div>
+          </div>
+          <div class="stat-card" style="padding:10px;">
+            <div class="stat-header" style="font-size:0.68rem;">
+              <i data-lucide="trending-down" style="color:var(--accent-rose); width:10px; height:10px;"></i>
+              Lowest Skill
+            </div>
+            <div id="stat-low-val" class="stat-value" style="font-size:1.05rem;">--</div>
+            <div id="stat-low-label" class="stat-footer" style="font-size:0.6rem;">--</div>
+          </div>
+        </section>
+
+        <!-- Core Domains -->
+        <section class="category-section">
+          <h3 class="section-title" style="margin-bottom:8px; font-size:0.75rem;">
+            <i data-lucide="layers" style="width:12px; height:12px;"></i>
+            Core Domains
+          </h3>
+          <div id="category-list" class="category-list" style="gap:6px; max-height: 240px;">
+            <!-- Dynamic categories list -->
+          </div>
+        </section>
+
+        <!-- Collapsible Physics Options Section in Left Sidebar -->
+        <details class="explore-card" style="padding: 10px 12px; gap: 8px;">
+          <summary style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+            Physics Parameters <i data-lucide="chevron-down" style="width:12px; height:12px; transition:transform 0.2s;"></i>
+          </summary>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+            <div class="control-group">
+              <div class="control-header">
+                <span class="control-label" style="font-size:0.7rem;">Repulsion Spacing</span>
+                <span id="val-physics-spacing" style="font-family:var(--font-mono); font-size:0.75rem;">160</span>
+              </div>
+              <input id="slide-physics-spacing" class="custom-range-slider" type="range" min="50" max="300" step="5" value="160" oninput="updatePhysicsOption('spacing', this.value)">
+            </div>
+
+            <div class="control-group">
+              <div class="control-header">
+                <span class="control-label" style="font-size:0.7rem;">Central Gravity</span>
+                <span id="val-physics-gravity" style="font-family:var(--font-mono); font-size:0.75rem;">0.015</span>
+              </div>
+              <input id="slide-physics-gravity" class="custom-range-slider" type="range" min="0" max="0.1" step="0.001" value="0.015" oninput="updatePhysicsOption('gravity', this.value)">
+            </div>
+
+            <div class="control-group">
+              <div class="control-header">
+                <span class="control-label" style="font-size:0.7rem;">Spring Length</span>
+                <span id="val-physics-spring" style="font-family:var(--font-mono); font-size:0.75rem;">140</span>
+              </div>
+              <input id="slide-physics-spring" class="custom-range-slider" type="range" min="40" max="250" step="5" value="140" oninput="updatePhysicsOption('spring', this.value)">
+            </div>
+          </div>
+        </details>
+
+        <!-- Utility Utilities Section -->
+        <div class="explore-card" style="padding: 12px; gap: 8px; margin-top:auto;">
+          <div class="explore-title" style="font-size:0.72rem; margin:0; padding-bottom:4px;">Engine Actions</div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+              <button class="btn-regular" onclick="setLayoutMode(layoutMode === 'organic' ? 'tree' : 'organic')" style="padding: 6px 10px; font-size:0.75rem; justify-content:center;">
+                <i data-lucide="orbit" style="width:12px; height:12px;"></i> Layout Toggle
+              </button>
+              <button class="btn-regular" onclick="fitGraphCamera()" style="padding: 6px 10px; font-size:0.75rem; justify-content:center;">
+                <i data-lucide="maximize" style="width:12px; height:12px;"></i> Fit Camera
+              </button>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+              <button id="freeze-physics-btn" class="btn-regular" onclick="toggleFreezePhysics()" style="padding: 6px 10px; font-size:0.75rem; justify-content:center;">
+                <i data-lucide="play" style="width:12px; height:12px;"></i> Pause Sim
+              </button>
+              <button class="btn-regular" onclick="resetToDefaults()" style="padding: 6px 10px; font-size:0.75rem; justify-content:center;">
+                <i data-lucide="rotate-ccw" style="width:12px; height:12px;"></i> Reset DAG
+              </button>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+              <button class="btn-regular" onclick="exportData()" style="padding: 6px 10px; font-size:0.75rem; justify-content:center;">
+                <i data-lucide="download" style="width:12px; height:12px;"></i> Export JSON
+              </button>
+              <button class="btn-regular" onclick="triggerImport()" style="padding: 6px 10px; font-size:0.75rem; justify-content:center;">
+                <i data-lucide="upload" style="width:12px; height:12px;"></i> Import JSON
+              </button>
+              <input type="file" id="import-file" style="display:none;" onchange="importData(event)">
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Center Space (Blank for Network View) -->
+    <div style="grid-area: center;"></div>
+
+    <!-- Right Node Inspector HUD Panel -->
+    <aside id="inspector-panel" class="hud-panel right-bar">
+      <div class="inspector-header">
+        <div class="inspector-title-group">
+          <span id="inspect-badge" class="inspector-badge badge-leaf">Leaf</span>
+          <h2 id="inspect-name" class="inspector-title">Transformers</h2>
+        </div>
+        <button class="btn-close-inspector" onclick="closeInspector()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="inspector-content">
+        <p id="inspect-desc" class="node-desc">Selected node description goes here...</p>
+
+        <!-- Metric Values Breakdown -->
+        <div class="metrics-card">
+          <div class="explore-title" style="border:none; margin:0; padding:0;">Computed Metrics</div>
+          
+          <div class="metric-row">
+            <div class="metric-label-group">
+              <span class="metric-label">
+                Neural Rating (N)
+                <i data-lucide="info" data-tooltip="Weighted sum passed through a sigmoid activation function. Compressed inside [0.5, 0.73]."></i>
+              </span>
+              <span id="inspect-val-n" class="metric-value">--</span>
+            </div>
+            <div class="meter-progress">
+              <div id="inspect-bar-n" class="meter-progress-fill fill-neural" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="metric-row">
+            <div class="metric-label-group">
+              <span class="metric-label">
+                Belief Credibility (B)
+                <i data-lucide="info" data-tooltip="Linear weighted average representing raw Bayesian belief propagation. Standard [0.0, 1.0]."></i>
+              </span>
+              <span id="inspect-val-b" class="metric-value">--</span>
+            </div>
+            <div class="meter-progress">
+              <div id="inspect-bar-b" class="meter-progress-fill fill-belief" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="metric-row">
+            <div class="metric-label-group">
+              <span class="metric-label">
+                Self-Assessment Confidence (C)
+                <i data-lucide="info" data-tooltip="Confidence rating. Leaves pass their score upward, and parents average descendant scores."></i>
+              </span>
+              <span id="inspect-val-c" class="metric-value">--</span>
+            </div>
+            <div class="meter-progress">
+              <div id="inspect-bar-c" class="meter-progress-fill fill-confidence" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Adjustment Inputs (Only visible if leaf node is selected) -->
+        <div id="leaf-inputs-card" class="slider-card" style="display:none;">
+          <div class="explore-title" style="border:none; margin:0; padding:0;">Skill Adjustment</div>
+          
+          <div class="control-group">
+            <div class="control-header">
+              <span class="control-label">Skill Value Rating (V)</span>
+              <span id="val-slider-num" class="control-value-display">--</span>
+            </div>
+            <input id="val-slider" class="custom-range-slider" type="range" min="0" max="1" step="0.01" oninput="adjustLeafValue()">
+            <div class="quick-preset-pills">
+              <button class="pill-btn" onclick="setLeafSlider('val', 0.0)">0.0</button>
+              <button class="pill-btn" onclick="setLeafSlider('val', 0.25)">0.25</button>
+              <button class="pill-btn" onclick="setLeafSlider('val', 0.5)">0.50</button>
+              <button class="pill-btn" onclick="setLeafSlider('val', 0.75)">0.75</button>
+              <button class="pill-btn" onclick="setLeafSlider('val', 1.0)">1.0</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span class="control-label">Assessment Confidence (C)</span>
+              <span id="conf-slider-num" class="control-value-display conf-val">--</span>
+            </div>
+            <input id="conf-slider" class="custom-range-slider conf-slider" type="range" min="0" max="1" step="0.01" oninput="adjustLeafConfidence()">
+            <div class="quick-preset-pills">
+              <button class="pill-btn" onclick="setLeafSlider('conf', 0.0)">0.0</button>
+              <button class="pill-btn" onclick="setLeafSlider('conf', 0.25)">0.25</button>
+              <button class="pill-btn" onclick="setLeafSlider('conf', 0.5)">0.50</button>
+              <button class="pill-btn" onclick="setLeafSlider('conf', 0.75)">0.75</button>
+              <button class="pill-btn" onclick="setLeafSlider('conf', 1.0)">1.0</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mathematical inputs (Parent dependencies) -->
+        <div id="parent-explore-card" class="explore-card">
+          <div id="explore-title-in" class="explore-title">Calculated From</div>
+          <div id="explore-list-in" class="explore-list">
+            <!-- Dynamic elements -->
+          </div>
+        </div>
+
+        <!-- Mathematical outputs (Affected nodes) -->
+        <div class="explore-card">
+          <div class="explore-title">Contributes To</div>
+          <div id="explore-list-out" class="explore-list">
+            <!-- Dynamic elements -->
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Custom Alert Toast notification -->
+  <div id="alert-toast" class="custom-toast">
+    <i data-lucide="info"></i>
+    <span id="toast-message">Configuration Auto-saved!</span>
+  </div>
+
+  <!-- ----------------------------------------------------
+       CORE DATA & LOGIC ENGINE
+       ---------------------------------------------------- -->
+  <script>
+    // Original core skill rating defaults
+    const defaultLeaves = {
+      Python:.8, SQL:.55, ETL:.3, Spark:.35,
+      Transformers:.95, Attention:.9, CNN:.7, RNN:.6, LSTM:.4,
+      Embeddings:.92, Tokenization:.88, FineTuning:.87, RLHF:.81, Quantization:.82,
+      RAG:.9, ToolCalling:.9, Memory:.8, Planning:.8, KnowledgeGraphs:.75,
+      Docker:.74, Kubernetes:.79, CICD:.77, Monitoring:.81, ModelServing:.76,
+      FastAPI:.78, Databases:.78, REST:.89, SystemDesign:.90,
+      Regression:.86, Classification:.86, Clustering:.75, FeatureEngineering:.60,
+      ModelEvaluation:.78, DataWarehousing:.40, DataPipelines:.60
+    };
+
+    // Keep leaf structures editable
+    let leaves = {...defaultLeaves};
+    
+    // Custom Confidence metrics for leaves (dynamic propagation helper)
+    let leafConf = {};
+    Object.keys(defaultLeaves).forEach(k => {
+      leafConf[k] = 1.0;
+    });
+
+    const dag = {
+      "Machine Learning": [["Regression",.2],["Classification",.2],["Clustering",.15],["FeatureEngineering",.15],["ModelEvaluation",.15],["Python",.15]],
+      "Deep Learning": [["CNN",.1],["RNN",.1],["LSTM",.1],["Attention",.25],["Transformers",.35],["Python",.1]],
+      "LLM Engineering": [["Transformers",.3],["Embeddings",.25],["Tokenization",.1],["FineTuning",.15],["RLHF",.1],["Quantization",.1]],
+      "AI Agents": [["RAG",.25],["ToolCalling",.2],["Memory",.1],["Planning",.1],["KnowledgeGraphs",.1],["Embeddings",.1],["Transformers",.15]],
+      "Backend Engineering": [["Python",.25],["FastAPI",.2],["Databases",.15],["REST",.15],["SystemDesign",.25]],
+      "Data Engineering": [["SQL",.25],["ETL",.2],["Spark",.2],["DataWarehousing",.15],["DataPipelines",.2]],
+      "MLOps": [["Docker",.2],["Kubernetes",.25],["CICD",.15],["Monitoring",.2],["ModelServing",.2]],
+      "AI Engineer": [["Machine Learning",.15],["Deep Learning",.2],["LLM Engineering",.2],["AI Agents",.15],["Backend Engineering",.1],["Data Engineering",.1],["MLOps",.1]]
+    };
+
+    // Textual descriptions for visual aesthetic context in inspector
+    const nodeDescriptions = {
+      "AI Engineer": "The central crown integration point. Represents the cross-disciplinary capability of building elite agentic, deep learning, data, and devops solutions.",
+      "Machine Learning": "Core theoretical foundations of predictive systems. Covers classifications, regression algorithms, clustering and rigorous verification metrics.",
+      "Deep Learning": "Cognitive deep networks modeling complex functions. Focuses on specialized feedforward, sequential, recurrent, and transformer attention nodes.",
+      "LLM Engineering": "Modern foundation systems design. Deals with pre-trained context encoders, custom tuning parameters, token alignments, and deep alignment models.",
+      "AI Agents": "Advanced autonomous software architecture. Combines deep memory stores, prompt tools, topological knowledge graphs, and planning solvers.",
+      "Backend Engineering": "Solid, highly performant service orchestrations. Focuses on structural APIs, transactional datastores, and systemic load planning.",
+      "Data Engineering": "Topological routing and flow pipelines. Moves big datasets through transactional lakes, warehouse queries, and batch engines.",
+      "MLOps": "Elite continuous model deployment systems. Integrates container scaling, testing paths, live models serving, and metric monitoring loops.",
+      "Python": "Standard primary language ecosystem for general AI, neural modeling, analytics, script automation, and deep research.",
+      "SQL": "Standard declarative queries for analytical datasets, index filters, relational transactions, and standard structures.",
+      "ETL": "Standard transactional pipeline routes: Extract from source logs, Transform structural schemas, Load into warehouses.",
+      "Spark": "Distributed fast memory pipelines routing petabyte clusters across distributed computational matrices.",
+      "Transformers": "Standard modern neural attention block forming the backbone of LLMs, visual vision blocks, and deep multi-modal platforms.",
+      "Attention": "Key-Query-Value vector projection mapping cognitive weights dynamically to capture context sequences.",
+      "CNN": "Convolutional filter grids extracting spatial invariants across matrices - ideal for deep vision grids.",
+      "RNN": "Recurrent neural architectures tracking internal state trajectories across dynamic temporal signals.",
+      "LSTM": "Long Short-Term Memory cell gating paths to maintain gradient context across extremely long time steps.",
+      "Embeddings": "Vector representations map semantic spaces to dense matrices, enabling geometric cosine lookups.",
+      "Tokenization": "Sentence parsing systems transforming character sequences into numeric token indices dynamically.",
+      "FineTuning": "Adapting foundational pre-trained model layers to specific domains with parameter-efficient fine-tuning (PEFT) like LoRA.",
+      "RLHF": "Reinforcement Learning from Human Feedback. Uses deep reward networks to align language model goals.",
+      "Quantization": "Bit-level compression models mapping FP32 parameters to dense INT8/INT4 weights for ultra-low latency.",
+      "RAG": "Retrieval-Augmented Generation. Complements vector databases with dynamic file injections for context accuracy.",
+      "ToolCalling": "Autonomous API triggers enabling neural agents to execute shell queries, web runs, or external API tasks.",
+      "Memory": "Dynamic context stores maintaining chat trajectories, vector summaries, and task histories for agents.",
+      "Planning": "Reasoning heuristics (e.g. Tree of Thoughts, ReAct) allowing models to plan self-correction steps iteratively.",
+      "KnowledgeGraphs": "Topological triple networks (Entity-Relation-Entity) adding explicit structured facts to neural flows.",
+      "Docker": "OS-level container hypervisors packing codebase binaries and dependencies into isolated executable images.",
+      "Kubernetes": "Orchestrating large networks of container servers with complex replica states, gateways, and load balancers.",
+      "CICD": "Continuous Integration & Delivery. Automatic build checks, tests, and cloud deployments on git operations.",
+      "FastAPI": "High-performance Python web APIs utilizing async-await loops and automated JSON serialization.",
+      "REST": "Representational State Transfer principles routing operations through secure and predictable HTTP endpoints.",
+      "SystemDesign": "Designing horizontally scalable server infrastructure, distributed caching layers, and decoupled backbones.",
+      "Databases": "Structuring efficient relational index schemas, handling multi-user concurrency, and optimizing transaction logs.",
+      "Regression": "Mathematical modeling of continuous numerical values using linear, polynomial, or ridge models.",
+      "Classification": "Categorizing discrete labels using multi-class logs, logistic vectors, or deep forest grids.",
+      "Clustering": "Grouping unlabelled multi-dimensional coordinates through k-means, density centroids, or hierarchical linkages.",
+      "FeatureEngineering": "Extracting clean input variables via coordinate rotations, dimensional reductions, and normalize ranges.",
+      "ModelEvaluation": "Validating neural generalizations using F1-scores, precision-recall arcs, confusion grids, and cross-splits.",
+      "DataWarehousing": "Optimizing heavy analytical databases (e.g. Snowflake) with columnar formats and partitions.",
+      "DataPipelines": "Orchestrating robust data flows using systems like Airflow, assuring schema contracts and error alerts.",
+      "Monitoring": "Streaming runtime dashboards tracking live inference latency, error distributions, and data drifings.",
+      "ModelServing": "Inference server layers hosting deep weights at scale with adaptive batching and dynamic caching."
+    };
+
+    let cache = {};
+
+    function sigmoid(x) {
+      return 1 / (1 + Math.exp(-x));
+    }
+
+    // Mathematical post-order recursive compute
+    function compute(node) {
+      // Return memoized node
+      if (cache[node] !== undefined) {
+        return cache[node];
+      }
+
+      // Leaf Base Case
+      if (leaves[node] !== undefined) {
+        const res = {
+          N: leaves[node],
+          B: leaves[node],
+          C: leafConf[node] !== undefined ? leafConf[node] : 1.0
+        };
+        cache[node] = res;
+        return res;
+      }
+
+      // Parent Node Recursion
+      let weightedN = 0;
+      let weightedB = 0;
+      let totalW = 0;
+      let confSum = 0;
+
+      dag[node].forEach(([child, w]) => {
+        const s = compute(child);
+        weightedN += s.N * w;
+        weightedB += s.B * w;
+        confSum += s.C;
+        totalW += w;
+      });
+
+      // Neural: weighted sum + sigmoid
+      const N = sigmoid(weightedN);
+
+      // Bayesian/Belief: weighted average
+      const B = weightedB / totalW;
+
+      // Confidence inherited from descendants (simple average)
+      const C = confSum / dag[node].length;
+
+      const res = { N, B, C };
+      cache[node] = res;
+      return res;
+    }
+
+    function recompute() {
+      // Clear cache dictionary
+      cache = {};
+      
+      // Calculate parents recursively
+      Object.keys(dag).forEach(k => {
+        compute(k);
+      });
+    }
+
+    /* ----------------------------------------------------
+       STATE MANAGEMENT & SYSTEM CONTROLS
+       ---------------------------------------------------- */
+    
+    // Auto-save to Local Storage
+    function saveState() {
+      const stateObj = {
+        leaves: leaves,
+        leafConf: leafConf
+      };
+      localStorage.setItem('ai_engineer_dag_v7_state', JSON.stringify(stateObj));
+      showToast("Configuration saved!");
+    }
+
+    // Load from Local Storage
+    function loadState() {
+      const saved = localStorage.getItem('ai_engineer_dag_v7_state');
+      if (saved) {
+        try {
+          const stateObj = JSON.parse(saved);
+          if (stateObj.leaves) leaves = {...stateObj.leaves};
+          if (stateObj.leafConf) leafConf = {...stateObj.leafConf};
+          return true;
+        } catch(e) {
+          console.error("Failed restoring saved state", e);
+        }
+      }
+      return false;
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("alert-toast");
+      document.getElementById("toast-message").innerText = message;
+      toast.classList.add("active");
+      
+      // Clear previous timeout if any
+      if (window.toastTimeout) clearTimeout(window.toastTimeout);
+      
+      window.toastTimeout = setTimeout(() => {
+        toast.classList.remove("active");
+      }, 2500);
+    }
+
+    // Preset Profiles
+    const presets = {
+      default: {
+        leaves: {...defaultLeaves},
+        conf: {}
+      },
+      beginner: {
+        leaves: {
+          Python:.7, SQL:.4, ETL:.15, Spark:.1,
+          Transformers:.4, Attention:.5, CNN:.5, RNN:.4, LSTM:.3,
+          Embeddings:.45, Tokenization:.55, FineTuning:.3, RLHF:.1, Quantization:.15,
+          RAG:.3, ToolCalling:.2, Memory:.2, Planning:.1, KnowledgeGraphs:.2,
+          Docker:.3, Kubernetes:.1, CICD:.2, Monitoring:.2, ModelServing:.15,
+          FastAPI:.5, Databases:.4, REST:.6, SystemDesign:.3,
+          Regression:.6, Classification:.6, Clustering:.4, FeatureEngineering:.4,
+          ModelEvaluation:.5, DataWarehousing:.1, DataPipelines:.2
+        },
+        conf: {}
+      },
+      llm_expert: {
+        leaves: {
+          Python:.9, SQL:.5, ETL:.3, Spark:.2,
+          Transformers:.98, Attention:.95, CNN:.3, RNN:.3, LSTM:.2,
+          Embeddings:.96, Tokenization:.92, FineTuning:.95, RLHF:.92, Quantization:.88,
+          RAG:.95, ToolCalling:.9, Memory:.88, Planning:.85, KnowledgeGraphs:.7,
+          Docker:.6, Kubernetes:.4, CICD:.5, Monitoring:.7, ModelServing:.8,
+          FastAPI:.8, Databases:.6, REST:.8, SystemDesign:.8,
+          Regression:.7, Classification:.7, Clustering:.5, FeatureEngineering:.6,
+          ModelEvaluation:.8, DataWarehousing:.2, DataPipelines:.3
+        },
+        conf: {}
+      },
+      mlops_expert: {
+        leaves: {
+          Python:.85, SQL:.7, ETL:.6, Spark:.65,
+          Transformers:.6, Attention:.5, CNN:.4, RNN:.3, LSTM:.2,
+          Embeddings:.6, Tokenization:.5, FineTuning:.6, RLHF:.4, Quantization:.75,
+          RAG:.6, ToolCalling:.6, Memory:.5, Planning:.4, KnowledgeGraphs:.4,
+          Docker:.98, Kubernetes:.96, CICD:.95, Monitoring:.92, ModelServing:.94,
+          FastAPI:.85, Databases:.8, REST:.9, SystemDesign:.9,
+          Regression:.6, Classification:.6, Clustering:.5, FeatureEngineering:.6,
+          ModelEvaluation:.75, DataWarehousing:.6, DataPipelines:.75
+        },
+        conf: {}
+      },
+      data_expert: {
+        leaves: {
+          Python:.85, SQL:.95, ETL:.9, Spark:.92,
+          Transformers:.5, Attention:.4, CNN:.3, RNN:.3, LSTM:.2,
+          Embeddings:.65, Tokenization:.5, FineTuning:.4, RLHF:.2, Quantization:.3,
+          RAG:.7, ToolCalling:.5, Memory:.4, Planning:.3, KnowledgeGraphs:.8,
+          Docker:.75, Kubernetes:.6, CICD:.75, Monitoring:.7, ModelServing:.5,
+          FastAPI:.8, Databases:.9, REST:.8, SystemDesign:.85,
+          Regression:.6, Classification:.6, Clustering:.7, FeatureEngineering:.8,
+          ModelEvaluation:.7, DataWarehousing:.9, DataPipelines:.92
+        },
+        conf: {}
+      },
+      master: {
+        leaves: {
+          Python:.95, SQL:.85, ETL:.8, Spark:.85,
+          Transformers:.95, Attention:.92, CNN:.8, RNN:.7, LSTM:.6,
+          Embeddings:.94, Tokenization:.9, FineTuning:.92, RLHF:.88, Quantization:.85,
+          RAG:.95, ToolCalling:.92, Memory:.9, Planning:.9, KnowledgeGraphs:.85,
+          Docker:.9, Kubernetes:.88, CICD:.9, Monitoring:.92, ModelServing:.9,
+          FastAPI:.9, Databases:.88, REST:.92, SystemDesign:.95,
+          Regression:.9, Classification:.9, Clustering:.85, FeatureEngineering:.85,
+          ModelEvaluation:.9, DataWarehousing:.75, DataPipelines:.85
+        },
+        conf: {}
+      }
+    };
+
+    // Pre-populate confidence for presets to 1.0
+    Object.keys(presets).forEach(p => {
+      Object.keys(presets[p].leaves).forEach(k => {
+        presets[p].conf[k] = 1.0;
+      });
+    });
+
+    let isLeftSidebarOpen = false;
+    function toggleLeftSidebar() {
+      const bar = document.getElementById("left-sidebar-panel");
+      const btn = document.getElementById("btn-toggle-left");
+      
+      isLeftSidebarOpen = !isLeftSidebarOpen;
+      bar.classList.toggle("active", isLeftSidebarOpen);
+      btn.classList.toggle("active", isLeftSidebarOpen);
+      
+      if (isLeftSidebarOpen) {
+        btn.style.borderColor = "var(--accent-purple)";
+        btn.style.color = "var(--accent-purple)";
+        btn.style.background = "rgba(168, 85, 247, 0.08)";
+        btn.style.boxShadow = "0 0 10px rgba(168, 85, 247, 0.15)";
+      } else {
+        btn.style.borderColor = "var(--border-thin)";
+        btn.style.color = "var(--text-secondary)";
+        btn.style.background = "var(--bg-input)";
+        btn.style.boxShadow = "none";
+      }
+    }
+
+    function loadPreset() {
+      const select = document.getElementById("preset-select");
+      const p = select.value;
+      if (presets[p]) {
+        leaves = {...presets[p].leaves};
+        leafConf = {...presets[p].conf};
+        recompute();
+        renderNetwork();
+        updateUI();
+        saveState();
+        showToast(`Preset Profile: '${p}' applied!`);
+        
+        // Sync inspectors if open
+        if (selectedNodeId) {
+          selectNodeById(selectedNodeId);
+        }
+      }
+    }
+
+    function resetToDefaults() {
+      if (confirm("Reset all skill adjustments back to V7 defaults?")) {
+        leaves = {...defaultLeaves};
+        Object.keys(defaultLeaves).forEach(k => {
+          leafConf[k] = 1.0;
+        });
+        document.getElementById("preset-select").value = "default";
+        recompute();
+        renderNetwork();
+        updateUI();
+        saveState();
+        showToast("Profile reset to defaults!");
+        
+        if (selectedNodeId) {
+          selectNodeById(selectedNodeId);
+        }
+      }
+    }
+
+    function exportData() {
+      const stateObj = {
+        leaves: leaves,
+        leafConf: leafConf,
+        exportDate: new Date().toISOString()
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(stateObj, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "ai_engineer_skill_profile.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast("Profile JSON exported!");
+    }
+
+    function triggerImport() {
+      document.getElementById("import-file").click();
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const stateObj = JSON.parse(e.target.result);
+          if (stateObj.leaves) {
+            leaves = {...stateObj.leaves};
+            // Backward compatibility
+            if (stateObj.leafConf) {
+              leafConf = {...stateObj.leafConf};
+            } else {
+              leafConf = {};
+              Object.keys(leaves).forEach(k => leafConf[k] = 1.0);
+            }
+            recompute();
+            renderNetwork();
+            updateUI();
+            saveState();
+            showToast("Profile imported successfully!");
+            if (selectedNodeId) selectNodeById(selectedNodeId);
+          } else {
+            alert("Error: Invalid JSON schema format.");
+          }
+        } catch(err) {
+          alert("Error: Failed parsing JSON file.");
+        }
+      };
+      reader.readAsText(file);
+      // Reset input element
+      event.target.value = "";
+    }
+
+    /* ----------------------------------------------------
+       GRAPH GRAPHICS & VIS NETWORK BUILD
+       ---------------------------------------------------- */
+    let network = null;
+    let nodesDataSet = new vis.DataSet();
+    let edgesDataSet = new vis.DataSet();
+    
+    let selectedNodeId = null;
+    let hoveredNodeId = null;
+    let activeHighlightCluster = null; // Used when a core domain is hovered on sidebar
+    let layoutMode = 'organic'; // 'organic' | 'tree'
+    let isPhysicsFrozen = false;
+
+    // Curated color grading for leaf nodes based on ratings
+    function getLeafHSL(v) {
+      const h = 217; // Monotone Sapphire Blue (Subdomains)
+      const s = 90;
+      const l = Math.round(26 + (66 - 26) * v);
+      return { h, s, l };
+    }
+
+    // Curated monotone purple color grading for main domains based on their computed scores
+    function getDomainHSL(v) {
+      const h = 270; // Monotone Orchid Purple (Domains)
+      const s = 90;
+      const l = Math.round(28 + (68 - 28) * v);
+      return { h, s, l };
+    }
+
+    // Get color based on node score/type
+    function getNodeColor(nodeId, isHighlighted = false, isDimmed = false) {
+      const isLeaf = leaves[nodeId] !== undefined;
+      const isRoot = nodeId === "AI Engineer";
+      
+      let hslStr = "";
+      if (isRoot) {
+        hslStr = "var(--accent-amber-hsl)";
+      } else if (isLeaf) {
+        const val = leaves[nodeId];
+        const c = getLeafHSL(val);
+        hslStr = `${c.h}, ${c.s}%, ${c.l}%`;
+      } else {
+        // Parent Domain Node: dynamic purple color grading based on Belief score
+        const scores = cache[nodeId] || { B: 0.5 };
+        const c = getDomainHSL(scores.B);
+        hslStr = `${c.h}, ${c.s}%, ${c.l}%`;
+      }
+
+      if (isDimmed) {
+        return {
+          background: `hsla(${hslStr}, 0.05)`,
+          border: `hsla(${hslStr}, 0.12)`,
+          highlight: {
+            background: `hsla(${hslStr}, 0.25)`,
+            border: `hsla(${hslStr}, 0.5)`
+          }
+        };
+      }
+
+      const alpha = isHighlighted ? "0.95" : "0.75";
+      const borderAlpha = isHighlighted ? "1.0" : "0.55";
+      
+      return {
+        background: `hsla(${hslStr}, ${alpha})`,
+        border: `hsla(${hslStr}, ${borderAlpha})`,
+        highlight: {
+          background: `hsla(${hslStr}, 0.98)`,
+          border: `hsla(${hslStr}, 1.0)`
+        }
+      };
+    }
+
+    // Determine path highlights: returns sets of highlighted nodes & edges
+    function getHighlightedPathElements(nodeId) {
+      const highlightedNodes = new Set();
+      const highlightedEdges = new Set();
+
+      if (!nodeId) return { nodes: highlightedNodes, edges: highlightedEdges };
+
+      // Helper: Find all parents recursively (ancestors)
+      function traverseUp(current) {
+        highlightedNodes.add(current);
+        
+        // Find links where this current node is the child
+        // In the dag dictionary, key represents the parent, and children list contains the child
+        Object.keys(dag).forEach(parent => {
+          dag[parent].forEach(([child, w]) => {
+            if (child === current) {
+              const edgeId = `${child}-${parent}`;
+              highlightedEdges.add(edgeId);
+              traverseUp(parent);
+            }
+          });
+        });
+      }
+
+      // Helper: Find all children recursively (descendants)
+      function traverseDown(current) {
+        highlightedNodes.add(current);
+        if (dag[current]) {
+          dag[current].forEach(([child, w]) => {
+            const edgeId = `${child}-${current}`;
+            highlightedEdges.add(edgeId);
+            traverseDown(child);
+          });
+        }
+      }
+
+      traverseUp(nodeId);
+      traverseDown(nodeId);
+
+      return { nodes: highlightedNodes, edges: highlightedEdges };
+    }
+
+    function renderNetwork() {
+      const nodes = [];
+      const edges = [];
+
+      // Determine highlighted paths
+      const highlights = getHighlightedPathElements(selectedNodeId);
+      const isAnyNodeSelected = selectedNodeId !== null;
+
+      // Add Leaves nodes (Small Circles)
+      Object.keys(leaves).forEach(k => {
+        const val = leaves[k];
+        const isHighlighted = highlights.nodes.has(k) || (activeHighlightCluster && activeHighlightCluster.has(k));
+        const isDimmed = isAnyNodeSelected && !isHighlighted;
+        
+        const leafHSL = getLeafHSL(val);
+        const glowColor = `hsla(${leafHSL.h}, ${leafHSL.s}%, ${leafHSL.l}%, 0.45)`;
+
+        nodes.push({
+          id: k,
+          label: `<b>${k}</b>\nRating: <b>${val.toFixed(2)}</b>`,
+          shape: 'dot',
+          size: 14,
+          color: getNodeColor(k, isHighlighted, isDimmed),
+          font: {
+            color: isDimmed ? "rgba(255,255,255,0.15)" : "#ffffff"
+          },
+          borderWidth: isHighlighted ? 3 : 1.5,
+          shadow: isHighlighted ? { enabled: true, color: glowColor, size: 15 } : { enabled: true }
+        });
+      });
+
+      // Add Parent nodes (Categories = Medium Circles, Root = Large Circle)
+      Object.keys(dag).forEach(k => {
+        const r = cache[k] || { N: 0, B: 0, C: 1 };
+        const isHighlighted = highlights.nodes.has(k) || (activeHighlightCluster && activeHighlightCluster.has(k));
+        const isDimmed = isAnyNodeSelected && !isHighlighted;
+        const isRoot = k === "AI Engineer";
+        
+        let label = `<b>${k}</b>\n`;
+        if (isRoot) {
+          label += `Score: <b>${(r.B * 100).toFixed(0)}%</b>`;
+        } else {
+          label += `N: <b>${r.N.toFixed(2)}</b>  B: <b>${r.B.toFixed(2)}</b>`;
+        }
+
+        let glowColor = "";
+        if (isRoot) {
+          glowColor = 'rgba(245, 158, 11, 0.45)';
+        } else {
+          const domHSL = getDomainHSL(r.B);
+          glowColor = `hsla(${domHSL.h}, ${domHSL.s}%, ${domHSL.l}%, 0.45)`;
+        }
+
+        nodes.push({
+          id: k,
+          label: label,
+          shape: 'dot',
+          size: isRoot ? 35 : 22,
+          color: getNodeColor(k, isHighlighted, isDimmed),
+          font: {
+            color: isDimmed ? "rgba(255,255,255,0.15)" : "#ffffff"
+          },
+          borderWidth: isHighlighted ? 3 : 2,
+          shadow: isHighlighted ? { 
+            enabled: true, 
+            color: glowColor, 
+            size: 18 
+          } : { enabled: true }
+        });
+
+        // Add Edges from children to k
+        dag[k].forEach(([child, w]) => {
+          const edgeId = `${child}-${k}`;
+          const isEdgeHighlighted = highlights.edges.has(edgeId) || (activeHighlightCluster && activeHighlightCluster.has(child) && activeHighlightCluster.has(k));
+          const isEdgeDimmed = isAnyNodeSelected && !isEdgeHighlighted;
+
+          edges.push({
+            id: edgeId,
+            from: child,
+            to: k,
+            label: isEdgeDimmed ? "" : w.toString(),
+            arrows: "to",
+            color: {
+              color: isEdgeHighlighted ? "rgba(59, 130, 246, 0.9)" : (isEdgeDimmed ? "rgba(255,255,255,0.015)" : "rgba(255, 255, 255, 0.1)"),
+              highlight: "rgba(59, 130, 246, 0.9)",
+              hover: "rgba(59, 130, 246, 0.6)"
+            },
+            width: isEdgeHighlighted ? 3 : 1.5,
+            font: {
+              color: isEdgeDimmed ? "transparent" : "rgba(255,255,255,0.4)",
+              size: 10,
+              strokeWidth: 0,
+              face: "JetBrains Mono"
+            }
+          });
+        });
+      });
+
+      nodesDataSet.clear();
+      nodesDataSet.add(nodes);
+      
+      edgesDataSet.clear();
+      edgesDataSet.add(edges);
+
+      // Build or update network
+      if (!network) {
+        const container = document.getElementById("network-canvas");
+        const data = { nodes: nodesDataSet, edges: edgesDataSet };
+        
+        const options = {
+          physics: {
+            enabled: !isPhysicsFrozen,
+            solver: 'forceAtlas2Based',
+            forceAtlas2Based: {
+              gravitationalConstant: -160,
+              centralGravity: 0.015,
+              springLength: 140,
+              springConstant: 0.08,
+              damping: 0.4,
+              avoidOverlap: 1.0
+            },
+            stabilization: {
+              iterations: 150,
+              updateInterval: 25
+            }
+          },
+          nodes: {
+            shape: 'dot',
+            font: {
+              color: '#ffffff',
+              face: 'Outfit',
+              size: 13,
+              multi: 'html'
+            }
+          },
+          edges: {
+            smooth: {
+              type: 'continuous',
+              roundness: 0.3
+            }
+          },
+          interaction: {
+            hover: true,
+            selectConnectedEdges: false
+          }
+        };
+
+        network = new vis.Network(container, data, options);
+
+        // Register event handlers
+        network.on("click", handleGraphClick);
+        network.on("doubleClick", handleGraphDoubleClick);
+      } else {
+        // Redraw with new datasets
+        network.setData({ nodes: nodesDataSet, edges: edgesDataSet });
+      }
+    }
+
+    // Toggle organic vs hierarchical tree layout
+    function setLayoutMode(mode) {
+      if (layoutMode === mode) return;
+      layoutMode = mode;
+      
+      document.getElementById("layout-organic-btn").classList.toggle("active", mode === 'organic');
+      document.getElementById("layout-tree-btn").classList.toggle("active", mode === 'tree');
+
+      if (!network) return;
+
+      if (mode === 'tree') {
+        network.setOptions({
+          layout: {
+            hierarchical: {
+              enabled: true,
+              direction: 'BT', // Bottom to Top: leaves at bottom, AI engineer at top
+              sortMethod: 'directed',
+              nodeSpacing: 180,
+              levelSeparation: 150
+            }
+          },
+          edges: {
+            smooth: {
+              type: 'cubicBezier',
+              forceDirection: 'vertical',
+              roundness: 0.5
+            }
+          }
+        });
+        
+        // Hide organic physics options on HUD in tree mode
+        document.getElementById("physics-toggle-btn").style.opacity = "0.5";
+        document.getElementById("physics-toggle-btn").style.pointerEvents = "none";
+      } else {
+        network.setOptions({
+          layout: {
+            hierarchical: {
+              enabled: false
+            }
+          },
+          edges: {
+            smooth: {
+              type: 'continuous',
+              roundness: 0.3
+            }
+          }
+        });
+        
+        document.getElementById("physics-toggle-btn").style.opacity = "1";
+        document.getElementById("physics-toggle-btn").style.pointerEvents = "auto";
+      }
+      
+      // Auto fit camera
+      setTimeout(() => fitGraphCamera(), 400);
+    }
+
+    function toggleFreezePhysics() {
+      if (!network || layoutMode === 'tree') return;
+      isPhysicsFrozen = !isPhysicsFrozen;
+      
+      network.setOptions({ physics: { enabled: !isPhysicsFrozen } });
+      
+      const btn = document.getElementById("freeze-physics-btn");
+      if (isPhysicsFrozen) {
+        btn.innerHTML = `<i data-lucide="play"></i> Resume Simulation`;
+        btn.style.borderColor = "var(--accent-blue)";
+        btn.style.color = "var(--accent-blue)";
+      } else {
+        btn.innerHTML = `<i data-lucide="pause"></i> Pause Simulation`;
+        btn.style.borderColor = "var(--border-thin)";
+        btn.style.color = "var(--text-primary)";
+      }
+      lucide.createIcons();
+    }
+
+    function fitGraphCamera() {
+      if (network) {
+        network.fit({
+          animation: {
+            duration: 800,
+            easingFunction: 'easeInOutQuad'
+          }
+        });
+      }
+    }
+
+    // Toggle floating physics adjust menu
+    function togglePhysicsSettings() {
+      if (layoutMode === 'tree') return;
+      const menu = document.getElementById("physics-menu");
+      menu.classList.toggle("active");
+    }
+
+    function updatePhysicsOption(option, val) {
+      if (!network) return;
+      
+      if (option === 'spacing') {
+        document.getElementById("val-physics-spacing").innerText = val;
+        network.setOptions({
+          physics: {
+            forceAtlas2Based: { gravitationalConstant: -parseFloat(val) }
+          }
+        });
+      } else if (option === 'gravity') {
+        document.getElementById("val-physics-gravity").innerText = val;
+        network.setOptions({
+          physics: {
+            forceAtlas2Based: { centralGravity: parseFloat(val) }
+          }
+        });
+      } else if (option === 'spring') {
+        document.getElementById("val-physics-spring").innerText = val;
+        network.setOptions({
+          physics: {
+            forceAtlas2Based: { springLength: parseFloat(val) }
+          }
+        });
+      }
+    }
+
+    /* ----------------------------------------------------
+       SELECTION & INSPECTOR SYSTEM
+       ---------------------------------------------------- */
+    
+    function handleGraphClick(properties) {
+      if (properties.nodes.length === 0) {
+        closeInspector();
+      }
+    }
+
+    function handleGraphDoubleClick(properties) {
+      if (properties.nodes.length > 0) {
+        const clickedNodeId = properties.nodes[0];
+        selectNodeById(clickedNodeId);
+      }
+    }
+
+    function selectNodeByName(name) {
+      selectNodeById(name);
+      
+      // Pan camera focus to the target node
+      if (network) {
+        network.focus(name, {
+          scale: 0.9,
+          animation: {
+            duration: 800,
+            easingFunction: 'easeInOutQuad'
+          }
+        });
+      }
+    }
+
+    function selectNodeById(id) {
+      selectedNodeId = id;
+      
+      // Highlight paths in the graph
+      renderNetwork();
+      
+      // Populate and trigger Inspector Slide-In
+      const isLeaf = leaves[id] !== undefined;
+      const isRoot = id === "AI Engineer";
+      
+      const badge = document.getElementById("inspect-badge");
+      badge.innerText = isRoot ? "Root Node" : (isLeaf ? "Leaf Skill" : "Sub-Domain");
+      
+      // Badge classes
+      badge.className = "inspector-badge";
+      if (isRoot) badge.classList.add("badge-root");
+      else if (isLeaf) badge.classList.add("badge-leaf");
+      else badge.classList.add("badge-parent");
+
+      document.getElementById("inspect-name").innerText = id;
+      document.getElementById("inspect-desc").innerText = nodeDescriptions[id] || "No description provided.";
+      
+      // Values N, B, C
+      let N = 0, B = 0, C = 1.0;
+      if (isLeaf) {
+        N = leaves[id];
+        B = leaves[id];
+        C = leafConf[id] !== undefined ? leafConf[id] : 1.0;
+      } else {
+        const scores = cache[id] || { N: 0, B: 0, C: 1.0 };
+        N = scores.N;
+        B = scores.B;
+        C = scores.C;
+      }
+
+      document.getElementById("inspect-val-n").innerText = N.toFixed(3);
+      document.getElementById("inspect-bar-n").style.width = `${N * 100}%`;
+
+      document.getElementById("inspect-val-b").innerText = B.toFixed(3);
+      document.getElementById("inspect-bar-b").style.width = `${B * 100}%`;
+
+      document.getElementById("inspect-val-c").innerText = C.toFixed(3);
+      document.getElementById("inspect-bar-c").style.width = `${C * 100}%`;
+
+      // Display inputs slider card only if Leaf node
+      const sliderCard = document.getElementById("leaf-inputs-card");
+      if (isLeaf) {
+        sliderCard.style.display = "flex";
+        
+        // Populate sliders
+        document.getElementById("val-slider").value = N;
+        document.getElementById("val-slider-num").innerText = N.toFixed(2);
+        
+        document.getElementById("conf-slider").value = C;
+        document.getElementById("conf-slider-num").innerText = C.toFixed(2);
+      } else {
+        sliderCard.style.display = "none";
+      }
+
+      // Calculated From explorer
+      const exploreInCard = document.getElementById("parent-explore-card");
+      const listIn = document.getElementById("explore-list-in");
+      listIn.innerHTML = "";
+      
+      if (isLeaf) {
+        exploreInCard.style.display = "none";
+      } else {
+        exploreInCard.style.display = "flex";
+        document.getElementById("explore-title-in").innerText = isRoot ? "Core Domains Breakdown" : "Calculated From Leaves";
+        
+        dag[id].forEach(([child, w]) => {
+          const childIsLeaf = leaves[child] !== undefined;
+          let score = 0;
+          if (childIsLeaf) {
+            score = leaves[child];
+          } else {
+            score = (cache[child] || { B: 0 }).B;
+          }
+
+          const item = document.createElement("div");
+          item.className = "explore-item";
+          item.onclick = (e) => {
+            e.stopPropagation();
+            selectNodeByName(child);
+          };
+          item.innerHTML = `
+            <span class="explore-name">${child} <small style="color:var(--text-muted);font-size:0.65rem;">(wt: ${w})</small></span>
+            <span class="explore-score">${score.toFixed(2)}</span>
+          `;
+          listIn.appendChild(item);
+        });
+      }
+
+      // Contributes To list
+      const listOut = document.getElementById("explore-list-out");
+      listOut.innerHTML = "";
+      
+      // Find parent references in DAG
+      let hasOutputs = false;
+      Object.keys(dag).forEach(parent => {
+        dag[parent].forEach(([child, w]) => {
+          if (child === id) {
+            hasOutputs = true;
+            const parentScore = (cache[parent] || { B: 0 }).B;
+            
+            const item = document.createElement("div");
+            item.className = "explore-item";
+            item.onclick = (e) => {
+              e.stopPropagation();
+              selectNodeByName(parent);
+            };
+            item.innerHTML = `
+              <span class="explore-name">${parent} <small style="color:var(--text-muted);font-size:0.65rem;">(wt: ${w})</small></span>
+              <span class="explore-score" style="color:var(--accent-purple);">${parentScore.toFixed(2)}</span>
+            `;
+            listOut.appendChild(item);
+          }
+        });
+      });
+
+      if (!hasOutputs) {
+        listOut.innerHTML = `<div style="font-size:0.75rem; color:var(--text-muted); padding:6px;">This is the root node. It has no outputs.</div>`;
+      }
+
+      // Slide out inspector
+      document.getElementById("inspector-panel").classList.add("active");
+    }
+
+    function closeInspector() {
+      selectedNodeId = null;
+      document.getElementById("inspector-panel").classList.remove("active");
+      renderNetwork();
+    }
+
+    /* ----------------------------------------------------
+       LEAF ADJUSTMENTS
+       ---------------------------------------------------- */
+    
+    function adjustLeafValue() {
+      if (!selectedNodeId || leaves[selectedNodeId] === undefined) return;
+      
+      const slider = document.getElementById("val-slider");
+      const val = parseFloat(slider.value);
+      
+      leaves[selectedNodeId] = val;
+      document.getElementById("val-slider-num").innerText = val.toFixed(2);
+      
+      // Update math, network and dashboard
+      recompute();
+      renderNetwork();
+      updateUI();
+      saveState();
+
+      // Reflect current N / B details back inside inspector cards
+      document.getElementById("inspect-val-n").innerText = val.toFixed(3);
+      document.getElementById("inspect-bar-n").style.width = `${val * 100}%`;
+      document.getElementById("inspect-val-b").innerText = val.toFixed(3);
+      document.getElementById("inspect-bar-b").style.width = `${val * 100}%`;
+    }
+
+    function adjustLeafConfidence() {
+      if (!selectedNodeId || leaves[selectedNodeId] === undefined) return;
+
+      const slider = document.getElementById("conf-slider");
+      const val = parseFloat(slider.value);
+
+      leafConf[selectedNodeId] = val;
+      document.getElementById("conf-slider-num").innerText = val.toFixed(2);
+
+      // Recompute and update HUD
+      recompute();
+      renderNetwork();
+      updateUI();
+      saveState();
+
+      // Update confidence bar inspector
+      const scores = cache[selectedNodeId] || { C: val };
+      const currentC = leafConf[selectedNodeId];
+      document.getElementById("inspect-val-c").innerText = currentC.toFixed(3);
+      document.getElementById("inspect-bar-c").style.width = `${currentC * 100}%`;
+    }
+
+    function setLeafSlider(type, value) {
+      if (type === 'val') {
+        const slider = document.getElementById("val-slider");
+        slider.value = value;
+        adjustLeafValue();
+      } else {
+        const slider = document.getElementById("conf-slider");
+        slider.value = value;
+        adjustLeafConfidence();
+      }
+    }
+
+    /* ----------------------------------------------------
+       HUD PANEL DYNAMIC DATA BINDINGS
+       ---------------------------------------------------- */
+    
+    function updateUI() {
+      // 1. Crown overall scores
+      const rootScores = cache["AI Engineer"] || { N: 0, B: 0, C: 1.0 };
+      document.getElementById("crown-n").innerText = `N: ${rootScores.N.toFixed(2)}`;
+      document.getElementById("crown-b").innerText = `B: ${rootScores.B.toFixed(2)}`;
+      document.getElementById("crown-c").innerText = `C: ${rootScores.C.toFixed(2)}`;
+      
+      // Percentage ring calculation
+      const percentage = Math.round(rootScores.B * 100);
+      document.getElementById("crown-radial-text").innerText = `${percentage}%`;
+      
+      const circumference = 220; // 2 * PI * 35 = 219.8
+      const strokeOffset = circumference - (rootScores.B * circumference);
+      document.getElementById("crown-radial-fill").style.strokeDashoffset = strokeOffset;
+
+      // 2. Summary stats calculation
+      let highVal = -1, lowVal = 2;
+      let highName = "", lowName = "";
+      let totalCount = 0;
+      let sum = 0;
+
+      Object.keys(leaves).forEach(k => {
+        const val = leaves[k];
+        totalCount++;
+        sum += val;
+        
+        if (val > highVal) {
+          highVal = val;
+          highName = k;
+        }
+        if (val < lowVal) {
+          lowVal = val;
+          lowName = k;
+        }
+      });
+
+      document.getElementById("stat-high-val").innerText = highVal.toFixed(2);
+      document.getElementById("stat-high-label").innerText = highName;
+
+      document.getElementById("stat-low-val").innerText = lowVal.toFixed(2);
+      document.getElementById("stat-low-label").innerText = lowName;
+
+      // 3. Populate Category Lists dynamically
+      const catList = document.getElementById("category-list");
+      catList.innerHTML = "";
+
+      Object.keys(dag).forEach(k => {
+        if (k === "AI Engineer") return; // Only domain cards
+
+        const scoreObj = cache[k] || { B: 0 };
+        const percent = scoreObj.B * 100;
+        
+        const card = document.createElement("div");
+        card.className = "category-card";
+        card.onclick = () => {
+          selectNodeByName(k);
+        };
+        
+        // Highlight when category is hovered on graph
+        card.onmouseenter = () => {
+          highlightClusterInGraph(k);
+        };
+        card.onmouseleave = () => {
+          clearClusterHighlight();
+        };
+
+        card.innerHTML = `
+          <div class="category-header">
+            <span class="category-name">${k}</span>
+            <span class="category-badge">${(scoreObj.B).toFixed(2)}</span>
+          </div>
+          <div class="linear-meter">
+            <div class="linear-fill" style="width: ${percent}%"></div>
+          </div>
+        `;
+        catList.appendChild(card);
+      });
+    }
+
+    // Highlighting category cluster on hover
+    function highlightClusterInGraph(catName) {
+      if (!dag[catName]) return;
+      
+      const cluster = new Set();
+      cluster.add(catName);
+      
+      // Add all leaves of this category
+      dag[catName].forEach(([child, w]) => {
+        cluster.add(child);
+      });
+
+      activeHighlightCluster = cluster;
+      renderNetwork();
+    }
+
+    function clearClusterHighlight() {
+      activeHighlightCluster = null;
+      renderNetwork();
+    }
+
+    /* ----------------------------------------------------
+       AUTOCOMPLETE SEARCH ENGINE
+       ---------------------------------------------------- */
+    const searchInput = document.getElementById("search-input");
+    const searchSuggestions = document.getElementById("search-suggestions");
+
+    searchInput.addEventListener("input", () => {
+      const q = searchInput.value.toLowerCase().trim();
+      if (!q) {
+        searchSuggestions.classList.remove("active");
+        return;
+      }
+
+      // Collect all node names
+      const allKeys = [...Object.keys(leaves), ...Object.keys(dag)];
+      const matches = allKeys.filter(k => k.toLowerCase().includes(q)).slice(0, 8);
+
+      if (matches.length > 0) {
+        searchSuggestions.innerHTML = "";
+        matches.forEach(m => {
+          const isLeaf = leaves[m] !== undefined;
+          const item = document.createElement("div");
+          item.className = "suggestion-item";
+          item.onclick = () => {
+            selectNodeByName(m);
+            searchInput.value = m;
+            searchSuggestions.classList.remove("active");
+          };
+          item.innerHTML = `
+            <span class="suggestion-label">${m}</span>
+            <span class="suggestion-type ${isLeaf ? 'type-leaf' : 'type-category'}">${isLeaf ? 'Leaf' : 'Parent'}</span>
+          `;
+          searchSuggestions.appendChild(item);
+        });
+        searchSuggestions.classList.add("active");
+      } else {
+        searchSuggestions.classList.remove("active");
+      }
+    });
+
+    // Close suggestion overlays on clicking outside
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".search-box")) {
+        searchSuggestions.classList.remove("active");
+      }
+    });
+
+    /* ----------------------------------------------------
+       SYSTEM INITIALIZATION RUN
+       ---------------------------------------------------- */
+    
+    // Load local storage if available
+    const hasSavedState = loadState();
+    
+    // Initial math run
+    recompute();
+    
+    // Initial render
+    renderNetwork();
+    updateUI();
+    
+    // Initialize Lucide icon library
+    lucide.createIcons();
+
+    // Trigger visual toast if loaded saved data
+    if (hasSavedState) {
+      setTimeout(() => showToast("Restored your custom profile!"), 500);
+    }
+  </script>
+</body>
+</html>
