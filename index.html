@@ -1437,6 +1437,53 @@
       <div class="inspector-content">
         <p id="inspect-desc" class="node-desc">Selected node description goes here...</p>
 
+        <!-- Probabilistic Beta PDF Curve Chart Card -->
+        <div class="slider-card" id="beta-chart-card" style="padding: 12px; gap: 8px;">
+          <div class="explore-title" style="border:none; margin:0; padding:0; display:flex; justify-content:space-between; align-items:center;">
+            <span>Probability Density Curve</span>
+            <span id="chart-metrics-legend" style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-secondary); font-weight:600;">α: --  β: --</span>
+          </div>
+          <div class="chart-container" style="position:relative; width:100%; height:130px; background:rgba(7,9,19,0.5); border:1px solid rgba(255,255,255,0.03); border-radius:8px; overflow:hidden;">
+            <svg id="pdf-chart" viewBox="0 0 350 130" preserveAspectRatio="none" style="width:100%; height:100%; display:block;">
+              <defs>
+                <!-- Glowing gradients for the PDF area fills -->
+                <linearGradient id="leaf-curve-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="rgba(59, 130, 246, 0.45)" />
+                  <stop offset="100%" stop-color="rgba(59, 130, 246, 0.0)" />
+                </linearGradient>
+                <linearGradient id="domain-curve-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="rgba(168, 85, 247, 0.45)" />
+                  <stop offset="100%" stop-color="rgba(168, 85, 247, 0.0)" />
+                </linearGradient>
+                <linearGradient id="root-curve-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="rgba(245, 158, 11, 0.45)" />
+                  <stop offset="100%" stop-color="rgba(245, 158, 11, 0.0)" />
+                </linearGradient>
+              </defs>
+              <!-- Ambient grid lines -->
+              <line x1="0" y1="110" x2="100%" y2="110" style="stroke:rgba(255,255,255,0.06); stroke-width:1;" />
+              <line x1="25%" y1="0" x2="25%" y2="100%" style="stroke:rgba(255,255,255,0.025); stroke-dasharray:3,3; stroke-width:1;" />
+              <line x1="50%" y1="0" x2="50%" y2="100%" style="stroke:rgba(255,255,255,0.025); stroke-dasharray:3,3; stroke-width:1;" />
+              <line x1="75%" y1="0" x2="75%" y2="100%" style="stroke:rgba(255,255,255,0.025); stroke-dasharray:3,3; stroke-width:1;" />
+              
+              <!-- Shaded Beta Area under curve -->
+              <path id="pdf-area" d="" style="fill:url(#leaf-curve-grad); transition: d 0.15s cubic-bezier(0.16, 1, 0.3, 1);" />
+              
+              <!-- Glowing Beta Stroke line -->
+              <path id="pdf-stroke" d="" style="fill:none; stroke:var(--accent-blue); stroke-width:2.5; stroke-linecap:round; transition: d 0.15s cubic-bezier(0.16, 1, 0.3, 1);" />
+              
+              <!-- Vertical dashed expected mean line -->
+              <line id="pdf-mean-line" x1="0" y1="0" x2="0" y2="110" style="stroke:#ffffff; stroke-dasharray:4,4; stroke-width:1.5; opacity:0.65; transition: x1 0.15s, x2 0.15s;" />
+              
+              <!-- Markers / Tick Labels on X-axis -->
+              <text x="5" y="121" style="fill:var(--text-muted); font-size:9px; font-family:var(--font-mono); font-weight:500;">0.0</text>
+              <text x="50%" y="121" text-anchor="middle" style="fill:var(--text-muted); font-size:9px; font-family:var(--font-mono); font-weight:500;">0.5</text>
+              <text x="91%" y="121" style="fill:var(--text-muted); font-size:9px; font-family:var(--font-mono); font-weight:500;">1.0</text>
+            </svg>
+            <div id="pdf-mean-label" style="position:absolute; bottom:25px; transform:translateX(-50%); font-family:var(--font-mono); font-size:9px; font-weight:800; color:#fff; background:rgba(13,17,30,0.85); backdrop-filter:blur(4px); padding:2px 6px; border-radius:4px; border:1px solid rgba(255,255,255,0.12); pointer-events:none; white-space:nowrap; display:none; transition: left 0.15s; box-shadow:var(--shadow-heavy);">μ: 0.85</div>
+          </div>
+        </div>
+
         <!-- Metric Values Breakdown -->
         <div class="metrics-card">
           <div class="explore-title" style="border:none; margin:0; padding:0;">Computed Metrics</div>
@@ -1477,6 +1524,20 @@
             </div>
             <div class="meter-progress">
               <div id="inspect-bar-c" class="meter-progress-fill fill-confidence" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="metric-row">
+            <div class="metric-label-group">
+              <span class="metric-label">
+                Beta Engine Range (μ ± σ)
+                <i data-lucide="info" data-tooltip="Probabilistic expected skill rating and standard deviation uncertainty range computed via continuous Beta distributions."></i>
+              </span>
+              <span id="inspect-val-beta" class="metric-value" style="color:var(--accent-amber);">--</span>
+            </div>
+            <div class="meter-progress" style="position:relative;">
+              <div id="inspect-bar-beta-range" style="position:absolute; height:100%; background:rgba(245, 158, 11, 0.2); border-left:1px solid rgba(245, 158, 11, 0.4); border-right:1px solid rgba(245, 158, 11, 0.4); left:0%; width:0%; transition: left 0.15s, width 0.15s;"></div>
+              <div id="inspect-bar-beta-mean" class="meter-progress-fill" style="background:linear-gradient(90deg, #f59e0b, #d97706); box-shadow:0 0 8px rgba(245, 158, 11, 0.4); width:0%; height:100%; transition: width 0.15s;"></div>
             </div>
           </div>
         </div>
@@ -1564,7 +1625,7 @@
     // Custom Confidence metrics for leaves (dynamic propagation helper)
     let leafConf = {};
     Object.keys(defaultLeaves).forEach(k => {
-      leafConf[k] = 1.0;
+      leafConf[k] = 0.85;
     });
 
     const dag = {
@@ -1631,6 +1692,126 @@
       return 1 / (1 + Math.exp(-x));
     }
 
+    // lnGamma using Numerical Recipes in C double-precision approximation (extremely stable for x > 0)
+    function lnGamma(x) {
+      if (x <= 0) return -Infinity;
+      if (x < 1e-5) return Math.log(Math.PI / (x * Math.PI)); // safeguard for very small x
+      let tmp = x + 5.5;
+      tmp -= (x + 0.5) * Math.log(tmp);
+      let ser = 1.000000000190015
+        + 76.18009172947146 / (x + 1.0)
+        - 86.50532032941677 / (x + 2.0)
+        + 24.01409824083091 / (x + 3.0)
+        - 1.231739572450155 / (x + 4.0)
+        + 0.1208650973866179e-2 / (x + 5.0)
+        - 0.5395239384953e-5 / (x + 6.0);
+      return Math.log(2.5066282746310005 * ser / x) - tmp;
+    }
+
+    // Stable Beta PDF evaluator using log-space mapping to prevent numeric overflows/underflows
+    function betaPDF(x, alpha, beta) {
+      if (x < 0 || x > 1) return 0;
+      if (x === 0) {
+        return alpha > 1 ? 0 : (alpha === 1 ? beta : Infinity);
+      }
+      if (x === 1) {
+        return beta > 1 ? 0 : (beta === 1 ? alpha : Infinity);
+      }
+      
+      // Clamp x slightly away from absolute 0 and 1 for absolute numeric stability
+      const clampedX = Math.max(1e-12, Math.min(1 - 1e-12, x));
+      
+      const logBetaFunc = lnGamma(alpha) + lnGamma(beta) - lnGamma(alpha + beta);
+      const logPDF = (alpha - 1) * Math.log(clampedX) + (beta - 1) * Math.log(1 - clampedX) - logBetaFunc;
+      
+      return Math.exp(logPDF);
+    }
+
+    // High-fidelity SVG Beta PDF Chart renderer
+    function drawBetaChart(alpha, beta, mean, nodeId) {
+      const isLeaf = leaves[nodeId] !== undefined;
+      const isRoot = nodeId === "AI Engineer";
+      
+      const areaPath = document.getElementById("pdf-area");
+      const strokePath = document.getElementById("pdf-stroke");
+      const meanLine = document.getElementById("pdf-mean-line");
+      const meanLabel = document.getElementById("pdf-mean-label");
+      const legend = document.getElementById("chart-metrics-legend");
+      
+      if (!areaPath || !strokePath || !meanLine || !meanLabel || !legend) return;
+
+      // Determine coloring & gradients based on node category
+      let fillGrad = "url(#leaf-curve-grad)";
+      let strokeColor = "var(--accent-blue)";
+      
+      if (isRoot) {
+        fillGrad = "url(#root-curve-grad)";
+        strokeColor = "var(--accent-amber)";
+      } else if (!isLeaf) {
+        fillGrad = "url(#domain-curve-grad)";
+        strokeColor = "var(--accent-purple)";
+      }
+      
+      areaPath.style.fill = fillGrad;
+      strokePath.style.stroke = strokeColor;
+      
+      // Generate points
+      let maxVal = 0.001;
+      const points = [];
+      const steps = 100;
+      
+      for (let i = 0; i <= steps; i++) {
+        const x = i / steps;
+        let y = betaPDF(x, alpha, beta);
+        
+        if (isNaN(y) || !isFinite(y)) {
+          y = 0;
+        }
+        
+        // Safeguard to prevent extreme needles from compressing baseline
+        const yCapped = Math.min(15.0, y);
+        points.push({ x, y: yCapped });
+        
+        if (yCapped > maxVal) {
+          maxVal = yCapped;
+        }
+      }
+      
+      // Generate SVG path string
+      let dArea = "M 5 110 ";
+      let dStroke = "";
+      
+      points.forEach((pt, i) => {
+        const px = 5 + pt.x * 340;
+        const py = 110 - (pt.y / maxVal) * 100;
+        
+        dArea += `L ${px.toFixed(1)} ${py.toFixed(1)} `;
+        if (i === 0) {
+          dStroke += `M ${px.toFixed(1)} ${py.toFixed(1)} `;
+        } else {
+          dStroke += `L ${px.toFixed(1)} ${py.toFixed(1)} `;
+        }
+      });
+      
+      dArea += "L 345 110 Z";
+      
+      areaPath.setAttribute("d", dArea);
+      strokePath.setAttribute("d", dStroke);
+      
+      // Position Expected Value Mean Line
+      const xMean = 5 + mean * 340;
+      meanLine.setAttribute("x1", xMean.toFixed(1));
+      meanLine.setAttribute("x2", xMean.toFixed(1));
+      
+      // Update expected value label overlay
+      meanLabel.style.display = "block";
+      meanLabel.style.left = `${(xMean / 350 * 100).toFixed(1)}%`;
+      meanLabel.innerText = `μ: ${mean.toFixed(2)}`;
+      
+      // Update parameter legend text
+      legend.innerText = `α: ${alpha.toFixed(1)}  β: ${beta.toFixed(1)}`;
+    }
+
     // Mathematical post-order recursive compute
     function compute(node) {
       // Return memoized node
@@ -1640,10 +1821,27 @@
 
       // Leaf Base Case
       if (leaves[node] !== undefined) {
+        const V = leaves[node];
+        const C = leafConf[node] !== undefined ? leafConf[node] : 1.0;
+        
+        // Expected mean clamped slightly away from boundaries for Beta stability
+        const mean = Math.max(0.001, Math.min(0.999, V));
+        
+        // Quadratic scaling mapping confidence [0,1] to concentration K [2,100]
+        const K = 2 + 98 * C * C;
+        
+        const alpha = mean * K;
+        const beta = (1 - mean) * K;
+        const variance = (mean * (1 - mean)) / (K + 1);
+
         const res = {
-          N: leaves[node],
-          B: leaves[node],
-          C: leafConf[node] !== undefined ? leafConf[node] : 1.0
+          N: V,
+          B: V,
+          C: C,
+          mean: mean,
+          variance: variance,
+          alpha: alpha,
+          beta: beta
         };
         cache[node] = res;
         return res;
@@ -1653,26 +1851,50 @@
       let weightedN = 0;
       let weightedB = 0;
       let totalW = 0;
-      let confSum = 0;
+      let weightedVar = 0;
 
       dag[node].forEach(([child, w]) => {
         const s = compute(child);
         weightedN += s.N * w;
         weightedB += s.B * w;
-        confSum += s.C;
+        weightedVar += s.variance * w;
         totalW += w;
       });
 
       // Neural: weighted sum + sigmoid
       const N = sigmoid(weightedN);
 
-      // Bayesian/Belief: weighted average
+      // Bayesian/Belief: weighted average (represents expected mean)
       const B = weightedB / totalW;
+      const mean = Math.max(0.001, Math.min(0.999, B));
 
-      // Confidence inherited from descendants (simple average)
-      const C = confSum / dag[node].length;
+      // Parent variance propagated via linear weighted variance
+      const varianceRaw = weightedVar / totalW;
+      
+      // Clamp variance strictly below mean*(1-mean) to satisfy moment matching requirement
+      const maxVarianceLimit = mean * (1 - mean) - 0.0001;
+      const variance = Math.max(1e-6, Math.min(varianceRaw, maxVarianceLimit));
 
-      const res = { N, B, C };
+      // Solve K from expected mean and variance
+      const K = (mean * (1 - mean)) / variance - 1;
+
+      // Solve parent alpha and beta
+      const alpha = mean * K;
+      const beta = (1 - mean) * K;
+
+      // Invert K concentration formula to derive unified parent confidence
+      let C = Math.sqrt(Math.max(0, (K - 2) / 98));
+      C = Math.min(1.0, Math.max(0.0, C));
+
+      const res = { 
+        N: N, 
+        B: B, 
+        C: C, 
+        mean: mean, 
+        variance: variance, 
+        alpha: alpha, 
+        beta: beta 
+      };
       cache[node] = res;
       return res;
     }
@@ -1803,10 +2025,16 @@
       }
     };
 
-    // Pre-populate confidence for presets to 1.0
+    // Pre-populate confidence for presets dynamically based on profile type
     Object.keys(presets).forEach(p => {
+      let defaultConf = 0.85; // professional self-assessment default
+      if (p === 'master') {
+        defaultConf = 1.0;  // Elite master gets absolute certainty
+      } else if (p === 'beginner') {
+        defaultConf = 0.50; // Beginner gets higher uncertainty
+      }
       Object.keys(presets[p].leaves).forEach(k => {
-        presets[p].conf[k] = 1.0;
+        presets[p].conf[k] = defaultConf;
       });
     });
 
@@ -1855,7 +2083,7 @@
       if (confirm("Reset all skill adjustments back to V7 defaults?")) {
         leaves = {...defaultLeaves};
         Object.keys(defaultLeaves).forEach(k => {
-          leafConf[k] = 1.0;
+          leafConf[k] = 0.85;
         });
         document.getElementById("preset-select").value = "default";
         recompute();
@@ -1905,7 +2133,7 @@
               leafConf = {...stateObj.leafConf};
             } else {
               leafConf = {};
-              Object.keys(leaves).forEach(k => leafConf[k] = 1.0);
+              Object.keys(leaves).forEach(k => leafConf[k] = 0.85);
             }
             recompute();
             renderNetwork();
@@ -2371,18 +2599,11 @@
       document.getElementById("inspect-name").innerText = id;
       document.getElementById("inspect-desc").innerText = nodeDescriptions[id] || "No description provided.";
       
-      // Values N, B, C
-      let N = 0, B = 0, C = 1.0;
-      if (isLeaf) {
-        N = leaves[id];
-        B = leaves[id];
-        C = leafConf[id] !== undefined ? leafConf[id] : 1.0;
-      } else {
-        const scores = cache[id] || { N: 0, B: 0, C: 1.0 };
-        N = scores.N;
-        B = scores.B;
-        C = scores.C;
-      }
+      // Values N, B, C, alpha, beta, mean
+      const scores = cache[id] || { N: 0.5, B: 0.5, C: 0.85, mean: 0.5, variance: 0.05, alpha: 2, beta: 2 };
+      const N = scores.N;
+      const B = scores.B;
+      const C = scores.C;
 
       document.getElementById("inspect-val-n").innerText = N.toFixed(3);
       document.getElementById("inspect-bar-n").style.width = `${N * 100}%`;
@@ -2392,6 +2613,19 @@
 
       document.getElementById("inspect-val-c").innerText = C.toFixed(3);
       document.getElementById("inspect-bar-c").style.width = `${C * 100}%`;
+
+      // Update Beta Engine Range Values and Progress bars
+      const stdDev = Math.sqrt(scores.variance || 0);
+      document.getElementById("inspect-val-beta").innerText = `${scores.mean.toFixed(3)} ± ${stdDev.toFixed(3)}`;
+      document.getElementById("inspect-bar-beta-mean").style.width = `${scores.mean * 100}%`;
+      
+      const rangeMin = Math.max(0, (scores.mean - stdDev) * 100);
+      const rangeWidth = Math.min(100 - rangeMin, (2 * stdDev) * 100);
+      document.getElementById("inspect-bar-beta-range").style.left = `${rangeMin.toFixed(1)}%`;
+      document.getElementById("inspect-bar-beta-range").style.width = `${rangeWidth.toFixed(1)}%`;
+
+      // Render continuous Beta distribution chart
+      drawBetaChart(scores.alpha, scores.beta, scores.mean, id);
 
       // Display inputs slider card only if Leaf node
       const sliderCard = document.getElementById("leaf-inputs-card");
@@ -2503,10 +2737,23 @@
       saveState();
 
       // Reflect current N / B details back inside inspector cards
-      document.getElementById("inspect-val-n").innerText = val.toFixed(3);
-      document.getElementById("inspect-bar-n").style.width = `${val * 100}%`;
-      document.getElementById("inspect-val-b").innerText = val.toFixed(3);
-      document.getElementById("inspect-bar-b").style.width = `${val * 100}%`;
+      const scores = cache[selectedNodeId] || { N: val, B: val, C: 0.85, mean: val, variance: 0.05, alpha: 2, beta: 2 };
+      document.getElementById("inspect-val-n").innerText = scores.N.toFixed(3);
+      document.getElementById("inspect-bar-n").style.width = `${scores.N * 100}%`;
+      document.getElementById("inspect-val-b").innerText = scores.B.toFixed(3);
+      document.getElementById("inspect-bar-b").style.width = `${scores.B * 100}%`;
+
+      // Update Beta Range in real-time
+      const stdDev = Math.sqrt(scores.variance || 0);
+      document.getElementById("inspect-val-beta").innerText = `${scores.mean.toFixed(3)} ± ${stdDev.toFixed(3)}`;
+      document.getElementById("inspect-bar-beta-mean").style.width = `${scores.mean * 100}%`;
+      const rangeMin = Math.max(0, (scores.mean - stdDev) * 100);
+      const rangeWidth = Math.min(100 - rangeMin, (2 * stdDev) * 100);
+      document.getElementById("inspect-bar-beta-range").style.left = `${rangeMin.toFixed(1)}%`;
+      document.getElementById("inspect-bar-beta-range").style.width = `${rangeWidth.toFixed(1)}%`;
+
+      // Redraw Beta Chart dynamically
+      drawBetaChart(scores.alpha, scores.beta, scores.mean, selectedNodeId);
     }
 
     function adjustLeafConfidence() {
@@ -2525,10 +2772,21 @@
       saveState();
 
       // Update confidence bar inspector
-      const scores = cache[selectedNodeId] || { C: val };
-      const currentC = leafConf[selectedNodeId];
-      document.getElementById("inspect-val-c").innerText = currentC.toFixed(3);
-      document.getElementById("inspect-bar-c").style.width = `${currentC * 100}%`;
+      const scores = cache[selectedNodeId] || { N: 0.5, B: 0.5, C: val, mean: 0.5, variance: 0.05, alpha: 2, beta: 2 };
+      document.getElementById("inspect-val-c").innerText = scores.C.toFixed(3);
+      document.getElementById("inspect-bar-c").style.width = `${scores.C * 100}%`;
+
+      // Update Beta Range in real-time
+      const stdDev2 = Math.sqrt(scores.variance || 0);
+      document.getElementById("inspect-val-beta").innerText = `${scores.mean.toFixed(3)} ± ${stdDev2.toFixed(3)}`;
+      document.getElementById("inspect-bar-beta-mean").style.width = `${scores.mean * 100}%`;
+      const rangeMin2 = Math.max(0, (scores.mean - stdDev2) * 100);
+      const rangeWidth2 = Math.min(100 - rangeMin2, (2 * stdDev2) * 100);
+      document.getElementById("inspect-bar-beta-range").style.left = `${rangeMin2.toFixed(1)}%`;
+      document.getElementById("inspect-bar-beta-range").style.width = `${rangeWidth2.toFixed(1)}%`;
+
+      // Redraw Beta Chart dynamically
+      drawBetaChart(scores.alpha, scores.beta, scores.mean, selectedNodeId);
     }
 
     function setLeafSlider(type, value) {
@@ -2596,8 +2854,15 @@
       Object.keys(dag).forEach(k => {
         if (k === "AI Engineer") return; // Only domain cards
 
-        const scoreObj = cache[k] || { B: 0 };
-        const percent = scoreObj.B * 100;
+        const scoreObj = cache[k] || { N: 0.5, B: 0.5, mean: 0.5, variance: 0.05, alpha: 2, beta: 2 };
+        const stdDev = Math.sqrt(scoreObj.variance || 0);
+        
+        const nPercent = scoreObj.N * 100;
+        const bPercent = scoreObj.B * 100;
+        const betaPercent = scoreObj.mean * 100;
+        
+        const rangeMin = Math.max(0, (scoreObj.mean - stdDev) * 100);
+        const rangeWidth = Math.min(100 - rangeMin, (2 * stdDev) * 100);
         
         const card = document.createElement("div");
         card.className = "category-card";
@@ -2614,12 +2879,28 @@
         };
 
         card.innerHTML = `
-          <div class="category-header">
-            <span class="category-name">${k}</span>
-            <span class="category-badge">${(scoreObj.B).toFixed(2)}</span>
+          <div class="category-header" style="margin-bottom: 4px;">
+            <span class="category-name" style="font-size:0.8rem; font-weight:700; font-family:var(--font-display);">${k}</span>
+            <span class="category-badge" style="font-size:0.62rem; color:var(--text-secondary); font-family:var(--font-mono); font-weight:600;">
+              N: <span style="color:var(--accent-rose);">${scoreObj.N.toFixed(2)}</span>
+              B: <span style="color:var(--accent-blue);">${scoreObj.B.toFixed(2)}</span>
+              β: <span style="color:var(--accent-amber);">${scoreObj.mean.toFixed(2)}±${stdDev.toFixed(2)}</span>
+            </span>
           </div>
-          <div class="linear-meter">
-            <div class="linear-fill" style="width: ${percent}%"></div>
+          <div style="display:flex; flex-direction:column; gap:4px; margin-top:2px;">
+            <!-- Neural bar -->
+            <div class="linear-meter" style="height:3px; background:rgba(255,255,255,0.02);" title="Neural (N) score">
+              <div class="linear-fill fill-neural" style="width: ${nPercent}%; background:linear-gradient(90deg, var(--accent-rose), var(--accent-purple)); box-shadow:none; height:100%;"></div>
+            </div>
+            <!-- Bayesian bar -->
+            <div class="linear-meter" style="height:3px; background:rgba(255,255,255,0.02);" title="Bayesian Belief (B) score">
+              <div class="linear-fill fill-belief" style="width: ${bPercent}%; background:linear-gradient(90deg, var(--accent-blue), var(--accent-purple)); box-shadow:none; height:100%;"></div>
+            </div>
+            <!-- Beta Range bar -->
+            <div class="linear-meter" style="height:4.5px; position:relative; background:rgba(255,255,255,0.02);" title="Beta Expected Mean (μ) and Standard Deviation (σ) spread">
+              <div style="position:absolute; height:100%; background:rgba(245, 158, 11, 0.25); border-left:1px solid rgba(245, 158, 11, 0.4); border-right:1px solid rgba(245, 158, 11, 0.4); left:${rangeMin.toFixed(1)}%; width:${rangeWidth.toFixed(1)}%;"></div>
+              <div class="linear-fill" style="width: ${betaPercent}%; background:linear-gradient(90deg, #f59e0b, #d97706); box-shadow:none; height:100%;"></div>
+            </div>
           </div>
         `;
         catList.appendChild(card);
