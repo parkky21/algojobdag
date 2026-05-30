@@ -2254,14 +2254,14 @@
         };
       }
 
-      const alpha = isHighlighted ? "0.95" : "0.75";
-      const borderAlpha = isHighlighted ? "1.0" : "0.55";
+      const alpha = "1.0";
+      const borderAlpha = "1.0";
       
       return {
         background: `hsla(${hslStr}, ${alpha})`,
         border: `hsla(${hslStr}, ${borderAlpha})`,
         highlight: {
-          background: `hsla(${hslStr}, 0.98)`,
+          background: `hsla(${hslStr}, 1.0)`,
           border: `hsla(${hslStr}, 1.0)`
         }
       };
