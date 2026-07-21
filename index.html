@@ -3128,60 +3128,96 @@
     }
 
     function routeDroppedJson(obj) {
-      if (obj && obj.branch && Array.isArray(obj.courses)) {
-        loadHierarchyFromJson(obj);
-      } else if (obj && obj.leaves) {
+      if (obj && obj.leaves && !obj.branch && !obj.courses && !obj.skills && !obj.branches) {
         // A profile export — restore ratings onto the current hierarchy
         leaves = {...obj.leaves};
         if (obj.leafConf) leafConf = {...obj.leafConf};
         recompute(); renderNetwork(); updateUI(); saveState();
         showToast("Profile ratings imported!");
-      } else {
-        showToast("Unrecognized JSON — expected a hierarchy (branch + courses) or a profile export");
+        return;
       }
+      const tree = normalizeAnyHierarchy(obj);
+      if (!tree || !tree.children || !tree.children.length) {
+        showToast("Couldn't find a hierarchy in this JSON (no nested name/children structure)");
+        return;
+      }
+      buildDagFromTree(tree);
     }
 
-    function loadHierarchyFromJson(h) {
+    /* Universal hierarchy normalizer — schema-tolerant.
+       Recognizes any nesting of the AlgoJob taxonomy JSONs (stage-4 buckets maps,
+       coverage maps, microskill maps, multi-branch maps) plus generic
+       name/children shapes, by probing known key names at every level. */
+    const H_NAME_KEYS = ["branch","branch_name","course","skill","skill_name","name","title","label","node_id","id"];
+    const H_CHILD_KEYS = ["courses","skills","sub_skills","subskills","microskills","branches","children","nodes","buckets","items"];
+    const H_NOTE_KEYS = ["evidence","note","source_note","scope","decision","description","outcome"];
+
+    function hNode(x, fallbackName) {
+      if (typeof x === "string") return x.trim() ? { name: x.trim(), note: "", children: [] } : null;
+      if (!x || typeof x !== "object" || Array.isArray(x)) return null;
+      let name = null;
+      for (const k of H_NAME_KEYS) { if (typeof x[k] === "string" && x[k].trim()) { name = x[k].trim(); break; } }
+      let children = [];
+      for (const k of H_CHILD_KEYS) {
+        if (Array.isArray(x[k]) && x[k].length) {
+          const kids = x[k].map(c => hNode(c)).filter(Boolean);
+          if (kids.length) { children = kids; break; }
+        }
+      }
+      let note = "";
+      for (const k of H_NOTE_KEYS) { if (typeof x[k] === "string" && x[k].trim()) { note = x[k].trim(); break; } }
+      if (x.origin === "missing" || x.coverage === "industry") note = "[gap — required by industry, untaught] " + note;
+      else if (x.coverage === "college") note = "[degree-only] " + note;
+      if (!name && !children.length) return null;
+      return { name: name || fallbackName || "Node", note: note, children: children };
+    }
+
+    function normalizeAnyHierarchy(obj) {
+      if (!obj || typeof obj !== "object") return null;
+      // Unwrap { skill: {...} } wrappers (microskill maps)
+      if (obj.skill && typeof obj.skill === "object" && !Array.isArray(obj.skill)) obj = obj.skill;
+      // Multi-branch files: single branch unwraps; several become children of one root
+      if (Array.isArray(obj.branches) && obj.branches.length) {
+        if (obj.branches.length === 1) return hNode(obj.branches[0], "Branch");
+        return { name: obj.schema_name || obj.name || "All Branches", note: obj.schema_note || "",
+                 children: obj.branches.map(b => hNode(b)).filter(Boolean) };
+      }
+      return hNode(obj, "Hierarchy");
+    }
+
+    function buildDagFromTree(root) {
       const nd = {}, nl = {}, nc = {}, desc = {};
-      const root = h.branch;
-      desc[root] = (h.generated_by || "Branch skill hierarchy") + " — " + (h.hierarchy || "course → skill → sub-skill");
-      const courseNames = new Set(h.courses.map(c => c.course));
-      const eq = arr => +(1 / Math.max(1, arr.length)).toFixed(3);
-      nd[root] = [];
-      h.courses.forEach(c => {
-        nd[root].push([c.course, eq(h.courses)]);
-        desc[c.course] = (c.origin === "missing" ? "[MISSING — required by industry, untaught] " : "[Curriculum — industry-required] ") + (c.source_note || "");
-        nd[c.course] = [];
-        (c.skills || []).forEach(sk => {
-          let sname = sk.skill;
-          // Qualify the skill name if it collides with another node
-          if (nd[sname] !== undefined || nl[sname] !== undefined || courseNames.has(sname) || sname === root) {
-            sname = sk.skill + " · " + c.course.replace(/\s*\(.*\)\s*$/, "");
-          }
-          nd[c.course].push([sname, eq(c.skills)]);
-          desc[sname] = "Skill bucket in " + c.course;
-          nd[sname] = [];
-          (sk.sub_skills || []).forEach(ss => {
-            let lname = ss.name;
-            if (nd[lname] !== undefined || lname === root) lname = ss.name + " •";
-            nd[sname].push([lname, eq(sk.sub_skills)]);
-            if (nl[lname] === undefined) {
-              nl[lname] = 0.5;
-              nc[lname] = 0.85;
-              desc[lname] = (c.origin === "missing" ? "[gap] " : "") + (ss.evidence || "");
-            }
-          });
+      const used = new Set([root.name]);
+      desc[root.name] = root.note || "Loaded hierarchy";
+      function uniq(n, parent) {
+        let m = n;
+        if (used.has(m)) m = n + " · " + String(parent).replace(/\s*\(.*\)\s*$/, "");
+        let i = 2;
+        while (used.has(m)) m = n + " (" + (i++) + ")";
+        used.add(m);
+        return m;
+      }
+      function walk(node, myName) {
+        if (!node.children.length) { nl[myName] = 0.5; nc[myName] = 0.85; if (node.note) desc[myName] = node.note; return; }
+        nd[myName] = [];
+        if (node.note && !desc[myName]) desc[myName] = node.note;
+        const w = +(1 / node.children.length).toFixed(3);
+        node.children.forEach(c => {
+          const cn = uniq(c.name, myName);
+          nd[myName].push([cn, w]);
+          if (c.note) desc[cn] = c.note;
+          walk(c, cn);
         });
-      });
+      }
+      walk(root, root.name);
       dag = nd; leaves = nl; leafConf = nc; nodeDescriptions = desc;
-      rootId = root; customHierarchy = true;
+      rootId = root.name; customHierarchy = true;
       selectedNodeId = null; activeHighlightCluster = null;
       const t = document.getElementById("crown-root-title");
-      if (t) t.innerText = root;
-      recompute(); renderNetwork(); updateUI(); saveState();
+      if (t) t.innerText = rootId;
+      recompute(); renderNetwork(); updateUI();
       if (network) setTimeout(() => network.fit({ animation: true }), 500);
-      const counts = h.counts ? ` (${h.counts.skills} skills · ${h.counts.sub_skills} sub-skills)` : ` (${Object.keys(nl).length} sub-skills)`;
-      showToast("Hierarchy loaded: " + root + counts);
+      showToast("Hierarchy loaded: " + rootId + " (" + Object.keys(nl).length + " leaves · " + Object.keys(nd).length + " groups)");
     }
 
     // Drag & drop anywhere on the page
