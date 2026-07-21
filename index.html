@@ -1334,10 +1334,10 @@
         </div>
 
         <!-- Crown Jewel Card -->
-        <section class="crown-jewel-card" onclick="selectNodeByName('AI Engineer')" style="padding:14px; cursor:pointer;">
+        <section class="crown-jewel-card" onclick="selectNodeByName(rootId)" style="padding:14px; cursor:pointer;">
           <div class="crown-info">
             <span class="crown-subtitle" style="font-size:0.65rem;">Central Hub Rating</span>
-            <h2 class="crown-title" style="font-size:1.05rem;">AI Engineer</h2>
+            <h2 class="crown-title" id="crown-root-title" style="font-size:1.05rem;">AI Engineer</h2>
             <div class="crown-metrics" style="font-size:0.6rem; margin-top:4px;">
               <span id="crown-n">N: --</span>
               <span id="crown-b">B: --</span>
@@ -1453,6 +1453,10 @@
                 <i data-lucide="upload" style="width:12px; height:12px;"></i> Import JSON
               </button>
               <input type="file" id="import-file" style="display:none;" onchange="importData(event)">
+              <button class="btn-regular" onclick="triggerHierarchy()" style="padding: 6px 10px; font-size:0.75rem; justify-content:center; grid-column: 1 / -1; width:100%; border-color:#3b82f6;">
+                <i data-lucide="git-branch" style="width:12px; height:12px;"></i> Load Hierarchy JSON (or drop it anywhere)
+              </button>
+              <input type="file" id="hierarchy-file" accept=".json" style="display:none;" onchange="importHierarchy(event)">
             </div>
 
           </div>
@@ -1670,7 +1674,10 @@
       leafConf[k] = 0.85;
     });
 
-    const dag = {
+    let rootId = "AI Engineer";
+    let customHierarchy = false;
+
+    let dag = {
       "Machine Learning": [["Regression",.2],["Classification",.2],["Clustering",.15],["FeatureEngineering",.15],["ModelEvaluation",.15],["Python",.15]],
       "Deep Learning": [["CNN",.1],["RNN",.1],["LSTM",.1],["Attention",.25],["Transformers",.35],["Python",.1]],
       "LLM Engineering": [["Transformers",.3],["Embeddings",.25],["Tokenization",.1],["FineTuning",.15],["RLHF",.1],["Quantization",.1]],
@@ -1682,7 +1689,7 @@
     };
 
     // Textual descriptions for visual aesthetic context in inspector
-    const nodeDescriptions = {
+    let nodeDescriptions = {
       "AI Engineer": "The central crown integration point. Represents the cross-disciplinary capability of building elite agentic, deep learning, data, and devops solutions.",
       "Machine Learning": "Core theoretical foundations of predictive systems. Covers classifications, regression algorithms, clustering and rigorous verification metrics.",
       "Deep Learning": "Cognitive deep networks modeling complex functions. Focuses on specialized feedforward, sequential, recurrent, and transformer attention nodes.",
@@ -1772,7 +1779,7 @@
     // High-fidelity SVG Beta PDF Chart renderer
     function drawBetaChart(alpha, beta, mean, nodeId) {
       const isLeaf = leaves[nodeId] !== undefined;
-      const isRoot = nodeId === "AI Engineer";
+      const isRoot = nodeId === rootId;
       
       const areaPath = document.getElementById("pdf-area");
       const strokePath = document.getElementById("pdf-stroke");
@@ -1941,6 +1948,9 @@
       return res;
     }
 
+    const defaultDag = JSON.parse(JSON.stringify(dag));
+    const defaultDescriptions = {...nodeDescriptions};
+
     function recompute() {
       // Clear cache dictionary
       cache = {};
@@ -1957,6 +1967,13 @@
     
     // Auto-save to Local Storage
     function saveState() {
+      if (customHierarchy) {
+        // Dropped hierarchies are session-only by design: the page always boots
+        // with the default AI Engineer DAG. Skip persistence so the user's saved
+        // default profile is never clobbered by a temporary hierarchy.
+        showToast("Custom hierarchy is session-only (not persisted)");
+        return;
+      }
       const stateObj = {
         leaves: leaves,
         leafConf: leafConf
@@ -1971,6 +1988,11 @@
       if (saved) {
         try {
           const stateObj = JSON.parse(saved);
+          if (stateObj.customHierarchy) {
+            // A custom hierarchy was saved by an older version — ignore it so the
+            // default DAG always shows on load.
+            return false;
+          }
           if (stateObj.leaves) leaves = {...stateObj.leaves};
           if (stateObj.leafConf) leafConf = {...stateObj.leafConf};
           return true;
@@ -2105,6 +2127,21 @@
     function loadPreset() {
       const select = document.getElementById("preset-select");
       const p = select.value;
+      if (customHierarchy && presets[p]) {
+        // With a custom hierarchy the preset's hardcoded leaf names don't exist.
+        // Map the preset's overall level onto the current leaves (deterministic jitter).
+        const vals = Object.values(presets[p].leaves);
+        const base = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0.5;
+        Object.keys(leaves).forEach(k => {
+          let h = 0; for (const ch of k) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+          leaves[k] = Math.max(0.05, Math.min(0.95, base + ((h % 100) / 100 - 0.5) * 0.3));
+          leafConf[k] = 0.85;
+        });
+        recompute(); renderNetwork(); updateUI(); saveState();
+        showToast(`Preset level '${p}' mapped onto ${rootId} hierarchy`);
+        if (selectedNodeId) selectNodeById(selectedNodeId);
+        return;
+      }
       if (presets[p]) {
         leaves = {...presets[p].leaves};
         leafConf = {...presets[p].conf};
@@ -2123,6 +2160,12 @@
 
     function resetToDefaults() {
       if (confirm("Reset all skill adjustments back to V7 defaults?")) {
+        dag = JSON.parse(JSON.stringify(defaultDag));
+        nodeDescriptions = {...defaultDescriptions};
+        rootId = "AI Engineer";
+        customHierarchy = false;
+        const crt = document.getElementById("crown-root-title");
+        if (crt) crt.innerText = rootId;
         leaves = {...defaultLeaves};
         Object.keys(defaultLeaves).forEach(k => {
           leafConf[k] = 0.85;
@@ -2227,7 +2270,7 @@
     // Get color based on node score/type
     function getNodeColor(nodeId, isHighlighted = false, isDimmed = false) {
       const isLeaf = leaves[nodeId] !== undefined;
-      const isRoot = nodeId === "AI Engineer";
+      const isRoot = nodeId === rootId;
       
       let hslStr = "";
       if (isRoot) {
@@ -2346,7 +2389,7 @@
         const r = cache[k] || { N: 0, B: 0, C: 1 };
         const isHighlighted = highlights.nodes.has(k) || (activeHighlightCluster && activeHighlightCluster.has(k));
         const isDimmed = isAnyNodeSelected && !isHighlighted;
-        const isRoot = k === "AI Engineer";
+        const isRoot = k === rootId;
         
         let label = `<b>${k}</b>\n`;
         if (isRoot) {
@@ -2628,7 +2671,7 @@
       
       // Populate and trigger Inspector Slide-In
       const isLeaf = leaves[id] !== undefined;
-      const isRoot = id === "AI Engineer";
+      const isRoot = id === rootId;
       
       const badge = document.getElementById("inspect-badge");
       badge.innerText = isRoot ? "Root Node" : (isLeaf ? "Leaf Skill" : "Sub-Domain");
@@ -2850,7 +2893,7 @@
     
     function updateUI() {
       // 1. Crown overall scores
-      const rootScores = cache["AI Engineer"] || { N: 0, B: 0, C: 1.0 };
+      const rootScores = cache[rootId] || { N: 0, B: 0, C: 1.0 };
       document.getElementById("crown-n").innerText = `N: ${rootScores.N.toFixed(2)}`;
       document.getElementById("crown-b").innerText = `B: ${rootScores.B.toFixed(2)}`;
       document.getElementById("crown-c").innerText = `C: ${rootScores.C.toFixed(2)}`;
@@ -2895,7 +2938,7 @@
       catList.innerHTML = "";
 
       Object.keys(dag).forEach(k => {
-        if (k === "AI Engineer") return; // Only domain cards
+        if (k === rootId) return; // Only domain cards
 
         const scoreObj = cache[k] || { N: 0.5, B: 0.5, mean: 0.5, variance: 0.05, alpha: 2, beta: 2 };
         const stdDev = Math.sqrt(scoreObj.variance || 0);
@@ -3059,6 +3102,112 @@
       }
       lucide.createIcons();
     }
+
+    /* ----------------------------------------------------
+       HIERARCHY JSON LOADER (branch -> course -> skill -> sub-skill)
+       Accepts the AlgoJob stage-4 pipeline JSON (Skill_Buckets_Map.json):
+       { branch, courses: [ { course, origin, source_note,
+         skills: [ { skill, sub_skills: [ { name, evidence } ] } ] } ] }
+       Drop the file anywhere on the page, or use the sidebar button.
+       ---------------------------------------------------- */
+
+    function triggerHierarchy() {
+      document.getElementById("hierarchy-file").click();
+    }
+
+    function importHierarchy(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try { routeDroppedJson(JSON.parse(e.target.result)); }
+        catch (err) { showToast("Invalid JSON file"); }
+      };
+      reader.readAsText(file);
+      event.target.value = "";
+    }
+
+    function routeDroppedJson(obj) {
+      if (obj && obj.branch && Array.isArray(obj.courses)) {
+        loadHierarchyFromJson(obj);
+      } else if (obj && obj.leaves) {
+        // A profile export — restore ratings onto the current hierarchy
+        leaves = {...obj.leaves};
+        if (obj.leafConf) leafConf = {...obj.leafConf};
+        recompute(); renderNetwork(); updateUI(); saveState();
+        showToast("Profile ratings imported!");
+      } else {
+        showToast("Unrecognized JSON — expected a hierarchy (branch + courses) or a profile export");
+      }
+    }
+
+    function loadHierarchyFromJson(h) {
+      const nd = {}, nl = {}, nc = {}, desc = {};
+      const root = h.branch;
+      desc[root] = (h.generated_by || "Branch skill hierarchy") + " — " + (h.hierarchy || "course → skill → sub-skill");
+      const courseNames = new Set(h.courses.map(c => c.course));
+      const eq = arr => +(1 / Math.max(1, arr.length)).toFixed(3);
+      nd[root] = [];
+      h.courses.forEach(c => {
+        nd[root].push([c.course, eq(h.courses)]);
+        desc[c.course] = (c.origin === "missing" ? "[MISSING — required by industry, untaught] " : "[Curriculum — industry-required] ") + (c.source_note || "");
+        nd[c.course] = [];
+        (c.skills || []).forEach(sk => {
+          let sname = sk.skill;
+          // Qualify the skill name if it collides with another node
+          if (nd[sname] !== undefined || nl[sname] !== undefined || courseNames.has(sname) || sname === root) {
+            sname = sk.skill + " · " + c.course.replace(/\s*\(.*\)\s*$/, "");
+          }
+          nd[c.course].push([sname, eq(c.skills)]);
+          desc[sname] = "Skill bucket in " + c.course;
+          nd[sname] = [];
+          (sk.sub_skills || []).forEach(ss => {
+            let lname = ss.name;
+            if (nd[lname] !== undefined || lname === root) lname = ss.name + " •";
+            nd[sname].push([lname, eq(sk.sub_skills)]);
+            if (nl[lname] === undefined) {
+              nl[lname] = 0.5;
+              nc[lname] = 0.85;
+              desc[lname] = (c.origin === "missing" ? "[gap] " : "") + (ss.evidence || "");
+            }
+          });
+        });
+      });
+      dag = nd; leaves = nl; leafConf = nc; nodeDescriptions = desc;
+      rootId = root; customHierarchy = true;
+      selectedNodeId = null; activeHighlightCluster = null;
+      const t = document.getElementById("crown-root-title");
+      if (t) t.innerText = root;
+      recompute(); renderNetwork(); updateUI(); saveState();
+      if (network) setTimeout(() => network.fit({ animation: true }), 500);
+      const counts = h.counts ? ` (${h.counts.skills} skills · ${h.counts.sub_skills} sub-skills)` : ` (${Object.keys(nl).length} sub-skills)`;
+      showToast("Hierarchy loaded: " + root + counts);
+    }
+
+    // Drag & drop anywhere on the page
+    (function setupHierarchyDrop() {
+      const overlay = document.createElement("div");
+      overlay.id = "drop-overlay";
+      overlay.style.cssText = "position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9999;background:rgba(13,16,23,.82);backdrop-filter:blur(3px);pointer-events:none;";
+      overlay.innerHTML = '<div style="border:2px dashed #3b82f6;border-radius:18px;padding:34px 48px;font-size:1.05rem;color:#e8eef6;background:rgba(20,25,37,.9);">Drop hierarchy JSON to build the DAG</div>';
+      document.body.appendChild(overlay);
+      let depth = 0;
+      document.addEventListener("dragenter", (e) => { e.preventDefault(); depth++; overlay.style.display = "flex"; });
+      document.addEventListener("dragover", (e) => { e.preventDefault(); });
+      document.addEventListener("dragleave", (e) => { e.preventDefault(); depth = Math.max(0, depth - 1); if (depth === 0) overlay.style.display = "none"; });
+      document.addEventListener("drop", (e) => {
+        e.preventDefault(); depth = 0; overlay.style.display = "none";
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!file) return;
+        if (!/\.json$/i.test(file.name)) { showToast("Drop a .json file"); return; }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try { routeDroppedJson(JSON.parse(ev.target.result)); }
+          catch (err) { showToast("Invalid JSON file"); }
+        };
+        reader.readAsText(file);
+      });
+    })();
 
     /* ----------------------------------------------------
        SYSTEM INITIALIZATION RUN
